@@ -95,6 +95,7 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
   const sourceFactory = options.sourceFactory ?? createDefaultSourceFactory;
   const watchFactory = options.watchFactory ?? createDefaultWatcher;
   const listeners = new Set<(event: AgentSubscriptionEvent) => void>();
+  const snapshotAtByRef = new WeakMap<object, number>();
   let previousSnapshot: AgentStateSnapshot | undefined;
   let latestSnapshot: AgentStateSnapshot | undefined;
 
@@ -134,6 +135,7 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
 
   runtime.subscribe((event) => {
     if (event.type === WATCH_RUNTIME_EVENT_TYPES.snapshot) {
+      snapshotAtByRef.set(event.snapshot as object, event.at);
       previousSnapshot = latestSnapshot;
       latestSnapshot = {
         at: event.at,
@@ -213,11 +215,9 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
 
   async function refreshNow(): Promise<AgentStateSnapshot> {
     const snapshot = await runtime.refreshNow();
-    if (latestSnapshot) {
-      return latestSnapshot;
-    }
+    const at = snapshotAtByRef.get(snapshot as object) ?? now();
     return {
-      at: now(),
+      at,
       agents: snapshot.agents,
       health: snapshot.health,
     };

@@ -36,15 +36,18 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   const subscriptions: ChangeSubscription[] = [];
 
   let state: "stopped" | "starting" | "started" | "stopping" = "stopped";
+  let desiredRunning = false;
   let lifecycleToken = 0;
   let pendingRefresh = false;
   let refreshLoop: Promise<void> | null = null;
   let debounceTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
   let queuedWaiters: RefreshWaiter<TAgent>[] = [];
+  let activeCycleWaiters: RefreshWaiter<TAgent>[] = [];
   let startPromise: Promise<void> | null = null;
   let stopPromise: Promise<void> | null = null;
 
   async function start(): Promise<void> {
+    desiredRunning = true;
     if (state === "started") {
       return;
     }
@@ -60,12 +63,15 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     const operation = (async () => {
       try {
         await source.connect?.();
-        if (token !== lifecycleToken || state !== "starting") {
+        if (token !== lifecycleToken || state !== "starting" || !desiredRunning) {
+          if (token === lifecycleToken) {
+            state = "stopped";
+          }
           await disconnectQuietly(source);
           return;
         }
 
-        initializeSubscriptions();
+        initializeSubscriptions(token);
         state = "started";
         emit({
           type: WATCH_RUNTIME_EVENT_TYPES.state,
@@ -96,6 +102,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   async function stop(): Promise<void> {
+    desiredRunning = false;
     if (state === "stopped") {
       return;
     }
@@ -121,6 +128,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
     const stoppedError = createStoppedError();
     rejectAllQueuedWaiters(stoppedError);
+    rejectActiveCycleWaiters(stoppedError);
 
     const operation = (async () => {
       try {
@@ -186,7 +194,12 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       pendingRefresh = false;
       const waitersForCycle = queuedWaiters;
       queuedWaiters = [];
-      await runRefreshCycle(waitersForCycle);
+      activeCycleWaiters = waitersForCycle;
+      try {
+        await runRefreshCycle(waitersForCycle);
+      } finally {
+        activeCycleWaiters = [];
+      }
     }
 
     refreshLoop = null;
@@ -233,7 +246,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     }
   }
 
-  function initializeSubscriptions(): void {
+  function initializeSubscriptions(token: number): void {
     if (!subscribeToChanges) {
       return;
     }
@@ -244,13 +257,17 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
         continue;
       }
 
-      const subscription = subscribeToChanges(trimmed, onWatchedEvent, onWatchedError);
+      const subscription = subscribeToChanges(
+        trimmed,
+        () => onWatchedEvent(token),
+        (error) => onWatchedError(error, token),
+      );
       subscriptions.push(subscription);
     }
   }
 
-  function onWatchedEvent(): void {
-    if (state !== "started") {
+  function onWatchedEvent(token: number): void {
+    if (state !== "started" || token !== lifecycleToken) {
       return;
     }
 
@@ -263,7 +280,10 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     }, debounceMs);
   }
 
-  function onWatchedError(error: Error): void {
+  function onWatchedError(error: Error, token: number): void {
+    if (state !== "started" || token !== lifecycleToken) {
+      return;
+    }
     emit({
       type: WATCH_RUNTIME_EVENT_TYPES.error,
       at: now(),
@@ -289,6 +309,12 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   function rejectAllQueuedWaiters(error: unknown): void {
     const waiters = queuedWaiters;
     queuedWaiters = [];
+    rejectWaiters(waiters, error);
+  }
+
+  function rejectActiveCycleWaiters(error: unknown): void {
+    const waiters = activeCycleWaiters;
+    activeCycleWaiters = [];
     rejectWaiters(waiters, error);
   }
 
