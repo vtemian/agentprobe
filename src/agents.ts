@@ -1,8 +1,8 @@
 import { statSync, watch } from "node:fs";
 import path from "node:path";
-import { createCursorTranscriptSource } from "@ext/sources/transcripts";
 import { createWatchRuntime } from "./runtime";
 import { resolveTranscriptSourcePaths } from "./discovery";
+import { createCursorTranscriptSource } from "./transcripts";
 import type { WatchSource } from "./types";
 import {
   AGENT_SUBSCRIPTION_EVENT_TYPES,
