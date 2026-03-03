@@ -1,8 +1,8 @@
 import { statSync, watch } from "node:fs";
 import path from "node:path";
-import { createAgentSource } from "@ext/sources";
-import { resolveTranscriptSourcePaths } from "@ext/sources/discovery";
+import { createCursorTranscriptSource } from "@ext/sources/transcripts";
 import { createWatchRuntime } from "./runtime";
+import { resolveTranscriptSourcePaths } from "./discovery";
 import type { WatchSource } from "./types";
 import {
   AGENT_SUBSCRIPTION_EVENT_TYPES,
@@ -257,12 +257,19 @@ function indexAgentsById(agents: AgentSnapshot[]): Map<string, AgentSnapshot> {
 }
 
 function createDefaultSourceFactory(projectPath: string): AgentSourceLike {
-  const sourcePaths = resolveTranscriptSourcePaths({
+  const discoveredSourcePaths = resolveTranscriptSourcePaths({
     workspacePaths: [projectPath],
   });
-  return createAgentSource({
-    transcriptOptions: { sourcePaths },
+  const sourcePaths = normalizeSourcePaths(discoveredSourcePaths);
+  return createCursorTranscriptSource({
+    sourcePaths,
   });
+}
+
+function normalizeSourcePaths(sourcePaths: readonly string[]): string[] {
+  return sourcePaths
+    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+    .filter((entry) => entry.length > 0);
 }
 
 function createDefaultWatcher(watchPath: string, onEvent: () => void): WatcherLike {
