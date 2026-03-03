@@ -1,7 +1,7 @@
 import { statSync, watch } from "node:fs";
 import path from "node:path";
 import { createWatchRuntime } from "./runtime";
-import { resolveTranscriptSourcePaths } from "./discovery";
+import { resolveTranscriptDirectories, resolveTranscriptSourcePaths } from "./discovery";
 import { createCursorTranscriptSource } from "./transcripts";
 import type { WatchSource } from "./types";
 import {
@@ -15,6 +15,7 @@ import type {
   AgentSourceReadResult,
   AgentStatus,
 } from "@shared/types";
+import { AGENT_SOURCE_KIND } from "@shared/types";
 
 interface AgentSourceLike {
   connect(): Promise<void> | void;
@@ -74,6 +75,7 @@ export type AgentSubscriptionEvent =
 
 export interface AgentSubscriptionOptions {
   projectPath: string;
+  projectPaths?: string[];
   debounceMs?: number;
   now?: () => number;
   sourceFactory?: (projectPath: string) => AgentSourceLike;
@@ -92,14 +94,17 @@ export interface AgentSubscription {
 
 export function createAgentSubscription(options: AgentSubscriptionOptions): AgentSubscription {
   const now = options.now ?? (() => Date.now());
-  const sourceFactory = options.sourceFactory ?? createDefaultSourceFactory;
+  const sourceFactory = options.sourceFactory;
   const watchFactory = options.watchFactory ?? createDefaultWatcher;
+  const workspacePaths = normalizeSourcePaths(options.projectPaths ?? [options.projectPath]);
   const listeners = new Set<(event: AgentSubscriptionEvent) => void>();
   const snapshotAtByRef = new WeakMap<object, number>();
   let previousSnapshot: AgentStateSnapshot | undefined;
   let latestSnapshot: AgentStateSnapshot | undefined;
 
-  const source = sourceFactory(options.projectPath);
+  const source = sourceFactory
+    ? sourceFactory(options.projectPath)
+    : createDefaultSourceFactory(workspacePaths);
   const sourceWatchPaths = source.getWatchPaths?.() ?? [];
   const watchRoots = resolveWatchRoots(sourceWatchPaths);
 
@@ -256,14 +261,42 @@ function indexAgentsById(agents: AgentSnapshot[]): Map<string, AgentSnapshot> {
   return byId;
 }
 
-function createDefaultSourceFactory(projectPath: string): AgentSourceLike {
-  const discoveredSourcePaths = resolveTranscriptSourcePaths({
-    workspacePaths: [projectPath],
-  });
-  const sourcePaths = normalizeSourcePaths(discoveredSourcePaths);
-  return createCursorTranscriptSource({
-    sourcePaths,
-  });
+function createDefaultSourceFactory(workspacePaths: string[]): AgentSourceLike {
+  const watchRoots = resolveTranscriptDirectories({ workspacePaths });
+  let connected = false;
+
+  return {
+    connect(): void {
+      connected = true;
+    },
+    disconnect(): void {
+      connected = false;
+    },
+    async readSnapshot(nowAt?: number): Promise<AgentSourceReadResult> {
+      if (!connected) {
+        return {
+          agents: [],
+          connected: false,
+          sourceLabel: AGENT_SOURCE_KIND.cursorTranscripts,
+          warnings: ["Cursor transcript source is disconnected."],
+        };
+      }
+
+      const sourcePaths = normalizeSourcePaths(
+        resolveTranscriptSourcePaths({
+          workspacePaths,
+        }),
+      );
+      const source = createCursorTranscriptSource({
+        sourcePaths,
+      });
+      source.connect();
+      return source.readSnapshot(nowAt);
+    },
+    getWatchPaths(): string[] {
+      return watchRoots;
+    },
+  };
 }
 
 function normalizeSourcePaths(sourcePaths: readonly string[]): string[] {
@@ -273,10 +306,20 @@ function normalizeSourcePaths(sourcePaths: readonly string[]): string[] {
 }
 
 function createDefaultWatcher(watchPath: string, onEvent: () => void): WatcherLike {
-  const watcher = watch(watchPath, WATCHER_OPTIONS, () => {
+  const onChange = (): void => {
     onEvent();
-  });
-  return watcher;
+  };
+
+  const useRecursive = supportsRecursiveWatch(watchPath);
+  if (useRecursive) {
+    try {
+      return watch(watchPath, { ...WATCHER_OPTIONS, recursive: true }, onChange);
+    } catch {
+      // Fall back to non-recursive watch when recursive mode is unavailable.
+    }
+  }
+
+  return watch(watchPath, WATCHER_OPTIONS, onChange);
 }
 
 function resolveWatchRoots(sourcePaths: readonly string[]): string[] {
@@ -287,15 +330,51 @@ function resolveWatchRoots(sourcePaths: readonly string[]): string[] {
       continue;
     }
 
-    let isDirectory = false;
+    let candidate = trimmed;
     try {
       const stats = statSync(trimmed);
-      isDirectory = stats.isDirectory();
+      candidate = stats.isDirectory() ? trimmed : path.dirname(trimmed);
     } catch {
-      // Fall back to parent directory when stat fails.
+      candidate = path.dirname(trimmed);
     }
-
-    roots.add(isDirectory ? trimmed : path.dirname(trimmed));
+    const watchRoot = findExistingDirectory(candidate);
+    if (watchRoot) {
+      roots.add(watchRoot);
+    }
   }
   return Array.from(roots);
+}
+
+function findExistingDirectory(entryPath: string): string | undefined {
+  let current = entryPath;
+  while (current.length > 0) {
+    if (isFilesystemRoot(current)) {
+      return undefined;
+    }
+    try {
+      if (statSync(current).isDirectory()) {
+        return current;
+      }
+    } catch {
+      // Keep walking up until an existing parent is found.
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+  return undefined;
+}
+
+function isFilesystemRoot(entryPath: string): boolean {
+  return path.dirname(entryPath) === entryPath;
+}
+
+function supportsRecursiveWatch(watchPath: string): boolean {
+  try {
+    return statSync(watchPath).isDirectory();
+  } catch {
+    return false;
+  }
 }

@@ -7,21 +7,61 @@ export interface TranscriptDiscoveryOptions {
   workspacePaths: string[];
 }
 
+const TRANSCRIPT_FILE_EXTENSION = ".jsonl";
+const MAX_DISCOVERED_TRANSCRIPT_FILES = 400;
+
+interface DiscoveredTranscriptFile {
+  path: string;
+  mtimeMs: number;
+}
+
 export function resolveTranscriptSourcePaths(options: TranscriptDiscoveryOptions): string[] {
-  const workspaceTranscriptDirectories = options.workspacePaths.map((workspacePath) =>
-    toTranscriptDirectory(workspacePath),
-  );
-  const discoveredPaths = collectTranscriptPaths(workspaceTranscriptDirectories);
+  const workspaceTranscriptDirectories = resolveTranscriptDirectories(options);
+  const discoveredPaths = collectTranscriptPaths(workspaceTranscriptDirectories)
+    .sort((left, right) => right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path))
+    .slice(0, MAX_DISCOVERED_TRANSCRIPT_FILES)
+    .map((entry) => entry.path);
   return dedupePaths(discoveredPaths);
 }
 
+export function resolveTranscriptDirectories(options: TranscriptDiscoveryOptions): string[] {
+  const directories = options.workspacePaths
+    .map((workspacePath) => toTranscriptDirectory(workspacePath))
+    .filter((entry) => entry.length > 0);
+  return dedupePaths(directories);
+}
+
 function toTranscriptDirectory(workspacePath: string): string {
-  const workspaceId = workspacePath.trim().replace(/^\/+/, "").split("/").join("-");
+  const normalizedWorkspacePath = normalizeWorkspacePath(workspacePath);
+  const workspaceId = normalizedWorkspacePath.replace(/^\/+/, "").split("/").join("-");
+  if (workspaceId.length === 0) {
+    return "";
+  }
   return path.join(homedir(), ".cursor", "projects", workspaceId, "agent-transcripts");
 }
 
-function collectTranscriptPaths(inputPaths: readonly string[]): string[] {
-  const collected: string[] = [];
+function normalizeWorkspacePath(workspacePath: string): string {
+  const trimmed = workspacePath.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+  const resolved = path.resolve(trimmed);
+  return stripTrailingSeparators(resolved);
+}
+
+function stripTrailingSeparators(value: string): string {
+  if (value === path.sep) {
+    return value;
+  }
+  return value.replace(new RegExp(`[${escapeForRegExp(path.sep)}]+$`), "");
+}
+
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function collectTranscriptPaths(inputPaths: readonly string[]): DiscoveredTranscriptFile[] {
+  const collected: DiscoveredTranscriptFile[] = [];
 
   for (const inputPath of inputPaths) {
     const normalizedPath = inputPath.trim();
@@ -36,8 +76,8 @@ function collectTranscriptPaths(inputPaths: readonly string[]): string[] {
       continue;
     }
 
-    if (stats.isFile() && normalizedPath.endsWith(".jsonl")) {
-      collected.push(normalizedPath);
+    if (stats.isFile() && normalizedPath.endsWith(TRANSCRIPT_FILE_EXTENSION)) {
+      collected.push({ path: normalizedPath, mtimeMs: Math.round(stats.mtimeMs) });
       continue;
     }
 
@@ -51,8 +91,8 @@ function collectTranscriptPaths(inputPaths: readonly string[]): string[] {
   return collected;
 }
 
-function collectJsonlFilesRecursive(directory: string): string[] {
-  const collected: string[] = [];
+function collectJsonlFilesRecursive(directory: string): DiscoveredTranscriptFile[] {
+  const collected: DiscoveredTranscriptFile[] = [];
   const stack = [directory];
 
   while (stack.length > 0) {
@@ -74,13 +114,28 @@ function collectJsonlFilesRecursive(directory: string): string[] {
         stack.push(entryPath);
         continue;
       }
-      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-        collected.push(entryPath);
+      if (entry.isFile() && entry.name.endsWith(TRANSCRIPT_FILE_EXTENSION)) {
+        const fileStats = readStats(entryPath);
+        if (!fileStats) {
+          continue;
+        }
+        collected.push({
+          path: entryPath,
+          mtimeMs: Math.round(fileStats.mtimeMs),
+        });
       }
     }
   }
 
-  return collected.sort((left, right) => left.localeCompare(right));
+  return collected;
+}
+
+function readStats(entryPath: string): Stats | undefined {
+  try {
+    return statSync(entryPath);
+  } catch {
+    return undefined;
+  }
 }
 
 function dedupePaths(paths: readonly string[]): string[] {

@@ -9,6 +9,8 @@ import {
 } from "./types";
 
 const DEFAULT_DEBOUNCE_MS = 150;
+const WATCH_RESUBSCRIBE_BASE_DELAY_MS = 500;
+const WATCH_RESUBSCRIBE_MAX_DELAY_MS = 8_000;
 
 type RefreshWaiter<TAgent> = {
   resolve: (snapshot: WatchSnapshot<TAgent>) => void;
@@ -16,6 +18,7 @@ type RefreshWaiter<TAgent> = {
 };
 
 type ChangeSubscription = {
+  watchPath: string;
   close(): void;
 };
 
@@ -34,6 +37,8 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
   const listeners = new Set<(event: WatchRuntimeEvent<TAgent, TStatus>) => void>();
   const subscriptions: ChangeSubscription[] = [];
+  const resubscribeTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
+  const resubscribeAttempts = new Map<string, number>();
 
   let state: "stopped" | "starting" | "started" | "stopping" = "stopped";
   let desiredRunning = false;
@@ -115,15 +120,13 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       } catch {
         // Continue stopping after failed start.
       }
-      if (state === "stopped") {
-        return;
-      }
     }
 
     state = "stopping";
     const token = ++lifecycleToken;
     clearDebounceTimer();
     closeSubscriptions();
+    clearResubscribeTimers();
     lifecycle.reset();
 
     const stoppedError = createStoppedError();
@@ -257,12 +260,22 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
         continue;
       }
 
-      const subscription = subscribeToChanges(
-        trimmed,
-        () => onWatchedEvent(token),
-        (error) => onWatchedError(error, token),
-      );
-      subscriptions.push(subscription);
+      try {
+        const subscription = subscribeToChanges(
+          trimmed,
+          () => onWatchedEvent(token),
+          (error) => onWatchedError(trimmed, error, token),
+        );
+        subscribeForWatchPath(trimmed, subscription);
+        clearResubscribeState(trimmed);
+      } catch (error) {
+        emit({
+          type: WATCH_RUNTIME_EVENT_TYPES.error,
+          at: now(),
+          error,
+        });
+        scheduleResubscribe(trimmed, token);
+      }
     }
   }
 
@@ -280,7 +293,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     }, debounceMs);
   }
 
-  function onWatchedError(error: Error, token: number): void {
+  function onWatchedError(watchPath: string, error: Error, token: number): void {
     if (state !== "started" || token !== lifecycleToken) {
       return;
     }
@@ -289,6 +302,32 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       at: now(),
       error,
     });
+    resubscribeWatchPath(watchPath, token);
+  }
+
+  function resubscribeWatchPath(watchPath: string, token: number): void {
+    if (!subscribeToChanges || state !== "started" || token !== lifecycleToken) {
+      return;
+    }
+
+    unsubscribeByWatchPath(watchPath);
+
+    try {
+      const subscription = subscribeToChanges(
+        watchPath,
+        () => onWatchedEvent(token),
+        (error) => onWatchedError(watchPath, error, token),
+      );
+      subscribeForWatchPath(watchPath, subscription);
+      clearResubscribeState(watchPath);
+    } catch (error) {
+      emit({
+        type: WATCH_RUNTIME_EVENT_TYPES.error,
+        at: now(),
+        error,
+      });
+      scheduleResubscribe(watchPath, token);
+    }
   }
 
   function clearDebounceTimer(): void {
@@ -302,7 +341,79 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   function closeSubscriptions(): void {
     const activeSubscriptions = subscriptions.splice(0, subscriptions.length);
     for (const subscription of activeSubscriptions) {
-      subscription.close();
+      try {
+        subscription.close();
+      } catch (error) {
+        emit({
+          type: WATCH_RUNTIME_EVENT_TYPES.error,
+          at: now(),
+          error,
+        });
+      }
+    }
+  }
+
+  function subscribeForWatchPath(watchPath: string, subscription: { close(): void }): void {
+    subscriptions.push({
+      watchPath,
+      close: () => subscription.close(),
+    });
+  }
+
+  function scheduleResubscribe(watchPath: string, token: number): void {
+    if (!subscribeToChanges || state !== "started" || token !== lifecycleToken) {
+      return;
+    }
+
+    const existing = resubscribeTimers.get(watchPath);
+    if (existing) {
+      return;
+    }
+
+    const attempt = (resubscribeAttempts.get(watchPath) ?? 0) + 1;
+    resubscribeAttempts.set(watchPath, attempt);
+    const delayMs = Math.min(
+      WATCH_RESUBSCRIBE_BASE_DELAY_MS * 2 ** Math.max(0, attempt - 1),
+      WATCH_RESUBSCRIBE_MAX_DELAY_MS,
+    );
+    const timer = globalThis.setTimeout(() => {
+      resubscribeTimers.delete(watchPath);
+      if (state !== "started" || token !== lifecycleToken) {
+        return;
+      }
+      resubscribeWatchPath(watchPath, token);
+    }, delayMs);
+    resubscribeTimers.set(watchPath, timer);
+  }
+
+  function clearResubscribeState(watchPath: string): void {
+    const timer = resubscribeTimers.get(watchPath);
+    if (timer) {
+      globalThis.clearTimeout(timer);
+      resubscribeTimers.delete(watchPath);
+    }
+    resubscribeAttempts.delete(watchPath);
+  }
+
+  function clearResubscribeTimers(): void {
+    for (const timer of resubscribeTimers.values()) {
+      globalThis.clearTimeout(timer);
+    }
+    resubscribeTimers.clear();
+    resubscribeAttempts.clear();
+  }
+
+  function unsubscribeByWatchPath(watchPath: string): void {
+    for (let index = subscriptions.length - 1; index >= 0; index -= 1) {
+      if (subscriptions[index]?.watchPath !== watchPath) {
+        continue;
+      }
+      const [subscription] = subscriptions.splice(index, 1);
+      try {
+        subscription?.close();
+      } catch {
+        // Recovery path should remain best-effort.
+      }
     }
   }
 
