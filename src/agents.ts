@@ -3,8 +3,18 @@ import path from "node:path";
 import { createAgentSource } from "@ext/sources";
 import { resolveTranscriptSourcePaths } from "@ext/sources/discovery";
 import { createWatchRuntime } from "./runtime";
-import type { WatchHealth, WatchLifecycleEvent, WatchSource } from "./types";
-import type { AgentSnapshot, AgentSourceReadResult, AgentStatus } from "@shared/types";
+import type { WatchSource } from "./types";
+import {
+  AGENT_SUBSCRIPTION_EVENT_TYPES,
+  WATCH_RUNTIME_EVENT_TYPES,
+  WATCH_RUNTIME_STATES,
+} from "./types";
+import type {
+  AgentLifecycleEvent,
+  AgentSnapshot,
+  AgentSourceReadResult,
+  AgentStatus,
+} from "@shared/types";
 
 interface AgentSourceLike {
   connect(): Promise<void> | void;
@@ -15,28 +25,44 @@ interface AgentSourceLike {
 
 interface WatcherLike {
   close(): void;
-  on(event: "error", listener: (error: Error) => void): void;
+  on(event: typeof WATCHER_ERROR_EVENT, listener: (error: Error) => void): void;
 }
+
+const WATCHER_ERROR_EVENT = "error" as const;
+const WATCHER_OPTIONS = { persistent: false } as const;
 
 export interface AgentStateSnapshot {
   at: number;
   agents: AgentSnapshot[];
-  health: WatchHealth;
+  health: AgentSubscriptionHealth;
 }
 
-export type AgentChange = WatchLifecycleEvent<AgentStatus>;
+export interface AgentSubscriptionHealth {
+  connected: boolean;
+  sourceLabel: string;
+  warnings: string[];
+}
+
+export type AgentChange = AgentLifecycleEvent;
+
+export interface AgentUpdatedEvent {
+  type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.updated;
+  at: number;
+  change: AgentChange;
+  agent: AgentSnapshot;
+  snapshot: AgentStateSnapshot;
+}
 
 export type AgentSubscriptionEvent =
+  | AgentUpdatedEvent
   | {
-      type: "updated";
+      type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.errored;
       at: number;
-      change: AgentChange;
-      agent: AgentSnapshot;
-      snapshot: AgentStateSnapshot;
+      error: unknown;
+      agent: AgentSnapshot | undefined;
     }
-  | { type: "errored"; at: number; error: unknown; agent: AgentSnapshot | undefined }
-  | { type: "started"; at: number; agent: AgentSnapshot | undefined }
-  | { type: "stopped"; at: number; agent: AgentSnapshot | undefined };
+  | { type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.started; at: number; agent: AgentSnapshot | undefined }
+  | { type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.stopped; at: number; agent: AgentSnapshot | undefined };
 
 export interface AgentSubscriptionOptions {
   projectPath: string;
@@ -52,6 +78,7 @@ export interface AgentSubscription {
   refreshNow(): Promise<AgentStateSnapshot>;
   getLatestSnapshot(): AgentStateSnapshot | undefined;
   subscribe(listener: (event: AgentSubscriptionEvent) => void): () => void;
+  subscribeToAgentChanges(listener: (event: AgentUpdatedEvent) => void): () => void;
 }
 
 export function createAgentSubscription(options: AgentSubscriptionOptions): AgentSubscription {
@@ -91,13 +118,13 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
     watchPaths: watchRoots,
     subscribeToChanges: (watchPath, onEvent, onError) => {
       const watcher = watchFactory(watchPath, onEvent);
-      watcher.on("error", onError);
+      watcher.on(WATCHER_ERROR_EVENT, onError);
       return { close: () => watcher.close() };
     },
   });
 
   runtime.subscribe((event) => {
-    if (event.type === "snapshot") {
+    if (event.type === WATCH_RUNTIME_EVENT_TYPES.snapshot) {
       previousSnapshot = latestSnapshot;
       latestSnapshot = {
         at: event.at,
@@ -107,7 +134,7 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
       return;
     }
 
-    if (event.type === "lifecycle") {
+    if (event.type === WATCH_RUNTIME_EVENT_TYPES.lifecycle) {
       if (!latestSnapshot) {
         return;
       }
@@ -119,7 +146,7 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
           continue;
         }
         emit({
-          type: "updated",
+          type: AGENT_SUBSCRIPTION_EVENT_TYPES.updated,
           at: event.at,
           change,
           agent,
@@ -129,16 +156,21 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
       return;
     }
 
-    if (event.type === "error") {
-      emit({ type: "errored", at: event.at, error: event.error, agent: undefined });
+    if (event.type === WATCH_RUNTIME_EVENT_TYPES.error) {
+      emit({
+        type: AGENT_SUBSCRIPTION_EVENT_TYPES.errored,
+        at: event.at,
+        error: event.error,
+        agent: undefined,
+      });
       return;
     }
 
-    if (event.state === "started") {
-      emit({ type: "started", at: event.at, agent: undefined });
+    if (event.state === WATCH_RUNTIME_STATES.started) {
+      emit({ type: AGENT_SUBSCRIPTION_EVENT_TYPES.started, at: event.at, agent: undefined });
       return;
     }
-    emit({ type: "stopped", at: event.at, agent: undefined });
+    emit({ type: AGENT_SUBSCRIPTION_EVENT_TYPES.stopped, at: event.at, agent: undefined });
   });
 
   function subscribe(listener: (event: AgentSubscriptionEvent) => void): () => void {
@@ -146,6 +178,14 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
     return () => {
       listeners.delete(listener);
     };
+  }
+
+  function subscribeToAgentChanges(listener: (event: AgentUpdatedEvent) => void): () => void {
+    return subscribe((event) => {
+      if (isAgentUpdatedEvent(event)) {
+        listener(event);
+      }
+    });
   }
 
   async function refreshNow(): Promise<AgentStateSnapshot> {
@@ -172,7 +212,12 @@ export function createAgentSubscription(options: AgentSubscriptionOptions): Agen
     refreshNow,
     getLatestSnapshot: () => latestSnapshot,
     subscribe,
+    subscribeToAgentChanges,
   };
+}
+
+export function isAgentUpdatedEvent(event: AgentSubscriptionEvent): event is AgentUpdatedEvent {
+  return event.type === AGENT_SUBSCRIPTION_EVENT_TYPES.updated;
 }
 
 function indexAgentsById(agents: AgentSnapshot[]): Map<string, AgentSnapshot> {
@@ -193,7 +238,7 @@ function createDefaultSourceFactory(projectPath: string): AgentSourceLike {
 }
 
 function createDefaultWatcher(watchPath: string, onEvent: () => void): WatcherLike {
-  const watcher = watch(watchPath, { persistent: false }, () => {
+  const watcher = watch(watchPath, WATCHER_OPTIONS, () => {
     onEvent();
   });
   return watcher;

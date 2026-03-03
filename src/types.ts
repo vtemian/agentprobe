@@ -16,7 +16,32 @@ export interface WatchSource<TAgent> {
   getWatchPaths?(): string[];
 }
 
-export type WatchLifecycleKind = "joined" | "statusChanged" | "heartbeat" | "left";
+export const WATCH_LIFECYCLE_KIND = {
+  joined: "joined",
+  statusChanged: "statusChanged",
+  heartbeat: "heartbeat",
+  left: "left",
+} as const;
+export type WatchLifecycleKind = (typeof WATCH_LIFECYCLE_KIND)[keyof typeof WATCH_LIFECYCLE_KIND];
+
+export const WATCH_RUNTIME_EVENT_TYPES = {
+  snapshot: "snapshot",
+  lifecycle: "lifecycle",
+  state: "state",
+  error: "error",
+} as const;
+
+export const WATCH_RUNTIME_STATES = {
+  started: "started",
+  stopped: "stopped",
+} as const;
+
+export const AGENT_SUBSCRIPTION_EVENT_TYPES = {
+  updated: "updated",
+  errored: "errored",
+  started: "started",
+  stopped: "stopped",
+} as const;
 
 export interface WatchLifecycleEvent<TStatus extends string = string> {
   kind: WatchLifecycleKind;
@@ -45,10 +70,22 @@ export interface WatchRuntimeOptions<TAgent, TStatus extends string = string> {
 }
 
 export type WatchRuntimeEvent<TAgent, TStatus extends string = string> =
-  | { type: "snapshot"; at: number; snapshot: WatchSnapshot<TAgent> }
-  | { type: "lifecycle"; at: number; events: WatchLifecycleEvent<TStatus>[] }
-  | { type: "state"; at: number; state: "started" | "stopped" }
-  | { type: "error"; at: number; error: unknown };
+  | {
+      type: typeof WATCH_RUNTIME_EVENT_TYPES.snapshot;
+      at: number;
+      snapshot: WatchSnapshot<TAgent>;
+    }
+  | {
+      type: typeof WATCH_RUNTIME_EVENT_TYPES.lifecycle;
+      at: number;
+      events: WatchLifecycleEvent<TStatus>[];
+    }
+  | {
+      type: typeof WATCH_RUNTIME_EVENT_TYPES.state;
+      at: number;
+      state: keyof typeof WATCH_RUNTIME_STATES;
+    }
+  | { type: typeof WATCH_RUNTIME_EVENT_TYPES.error; at: number; error: unknown };
 
 export interface WatchRuntime<TAgent, TStatus extends string = string> {
   start(): Promise<void>;

@@ -1,4 +1,5 @@
 import type { LifecycleSnapshot, WatchLifecycleEvent } from "./types";
+import { WATCH_LIFECYCLE_KIND } from "./types";
 
 export function createLifecycleMapper<TAgent, TStatus extends string>(
   snapshot: LifecycleSnapshot<TAgent, TStatus>,
@@ -21,7 +22,7 @@ export function createLifecycleMapper<TAgent, TStatus extends string>(
 
       if (previousStatus === undefined) {
         events.push({
-          kind: "joined",
+          kind: WATCH_LIFECYCLE_KIND.joined,
           agentId,
           at,
           fromStatus: null,
@@ -32,7 +33,7 @@ export function createLifecycleMapper<TAgent, TStatus extends string>(
 
       if (previousStatus !== nextStatus) {
         events.push({
-          kind: "statusChanged",
+          kind: WATCH_LIFECYCLE_KIND.statusChanged,
           agentId,
           at,
           fromStatus: previousStatus,
@@ -42,7 +43,7 @@ export function createLifecycleMapper<TAgent, TStatus extends string>(
       }
 
       events.push({
-        kind: "heartbeat",
+        kind: WATCH_LIFECYCLE_KIND.heartbeat,
         agentId,
         at,
         fromStatus: previousStatus,
@@ -53,7 +54,7 @@ export function createLifecycleMapper<TAgent, TStatus extends string>(
     for (const [agentId, previousStatus] of previousStatusById.entries()) {
       if (!nextStatusById.has(agentId)) {
         events.push({
-          kind: "left",
+          kind: WATCH_LIFECYCLE_KIND.left,
           agentId,
           at,
           fromStatus: previousStatus,

@@ -1,7 +1,10 @@
 import { createLifecycleMapper } from "./lifecycle";
 import type { WatchRuntime, WatchRuntimeEvent, WatchRuntimeOptions, WatchSnapshot } from "./types";
+import { WATCH_RUNTIME_EVENT_TYPES, WATCH_RUNTIME_STATES } from "./types";
 
 const DEFAULT_DEBOUNCE_MS = 150;
+const NOT_RUNNING_ERROR_MESSAGE = "Watch runtime is not running.";
+const STOPPED_ERROR_MESSAGE = "Watch runtime stopped before refresh completed.";
 
 type RefreshWaiter<TAgent> = {
   resolve: (snapshot: WatchSnapshot<TAgent>) => void;
@@ -43,7 +46,11 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     try {
       await source.connect?.();
       initializeSubscriptions();
-      emit({ type: "state", at: now(), state: "started" });
+      emit({
+        type: WATCH_RUNTIME_EVENT_TYPES.state,
+        at: now(),
+        state: WATCH_RUNTIME_STATES.started,
+      });
       queueRefresh();
     } catch (error) {
       running = false;
@@ -72,7 +79,11 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     try {
       await source.disconnect?.();
     } finally {
-      emit({ type: "state", at: now(), state: "stopped" });
+      emit({
+        type: WATCH_RUNTIME_EVENT_TYPES.state,
+        at: now(),
+        state: WATCH_RUNTIME_STATES.stopped,
+      });
     }
   }
 
@@ -135,13 +146,13 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       }
 
       emit({
-        type: "snapshot",
+        type: WATCH_RUNTIME_EVENT_TYPES.snapshot,
         at,
         snapshot,
       });
 
       emit({
-        type: "lifecycle",
+        type: WATCH_RUNTIME_EVENT_TYPES.lifecycle,
         at,
         events: lifecycle.map(snapshot.agents, at),
       });
@@ -154,7 +165,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       }
 
       emit({
-        type: "error",
+        type: WATCH_RUNTIME_EVENT_TYPES.error,
         at: now(),
         error,
       });
@@ -194,7 +205,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
   function onWatchedError(error: Error): void {
     emit({
-      type: "error",
+      type: WATCH_RUNTIME_EVENT_TYPES.error,
       at: now(),
       error,
     });
@@ -251,11 +262,11 @@ function rejectWaiters<TAgent>(waiters: RefreshWaiter<TAgent>[], error: unknown)
 }
 
 function createNotRunningError(): Error {
-  return new Error("Watch runtime is not running.");
+  return new Error(NOT_RUNNING_ERROR_MESSAGE);
 }
 
 function createStoppedError(): Error {
-  return new Error("Watch runtime stopped before refresh completed.");
+  return new Error(STOPPED_ERROR_MESSAGE);
 }
 
 async function disconnectQuietly(source: { disconnect?(): Promise<void> | void }): Promise<void> {

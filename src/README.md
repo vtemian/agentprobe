@@ -19,14 +19,15 @@ Methods:
 - `refreshNow()`
 - `getLatestSnapshot()`
 - `subscribe(listener)`
+- `subscribeToAgentChanges(listener)` (updated events only)
 
 Events:
 
 - `updated` (one event per agent change: joined/statusChanged/heartbeat/left)
   - includes `agent` (always present, including `left`)
-- `errored`
-- `started`
-- `stopped`
+- `errored` (runtime/source error, `agent` may be `undefined`)
+- `started` (runtime state event, `agent` may be `undefined`)
+- `stopped` (runtime state event, `agent` may be `undefined`)
 
 ## Quick Start
 
@@ -37,11 +38,10 @@ const subscription = createAgentSubscription({
   projectPath: "/Users/me/my-project",
 });
 
-const dispose = subscription.subscribe((event) => {
-  if (event.type === "updated") {
-    // event.change has: kind, fromStatus, toStatus, agentId, at
-    // consume event.change and event.snapshot
-  }
+const dispose = subscription.subscribeToAgentChanges((event) => {
+  // event.change has: kind, fromStatus, toStatus, agentId, at
+  // event.agent is always present
+  // consume event.change and event.snapshot
 });
 
 await subscription.start();
@@ -52,7 +52,7 @@ await subscription.start();
 1. Provide a project path (`projectPath`) as input.
 2. The library resolves transcript paths from that project path and reads snapshots internally.
 3. Optionally override source/watch adapters for testing.
-4. Consume `updated` events in your state/UI layer.
+4. Prefer `subscribeToAgentChanges` for UI/state updates.
 
 ## Notes
 
