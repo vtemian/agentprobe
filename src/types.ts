@@ -36,6 +36,11 @@ export const WATCH_RUNTIME_STATES = {
   stopped: "stopped",
 } as const;
 
+export const WATCH_RUNTIME_ERROR_MESSAGES = {
+  notRunning: "Watch runtime is not running.",
+  stoppedBeforeRefreshCompleted: "Watch runtime stopped before refresh completed.",
+} as const;
+
 export const AGENT_SUBSCRIPTION_EVENT_TYPES = {
   updated: "updated",
   errored: "errored",

@@ -1,10 +1,12 @@
 import { createLifecycleMapper } from "./lifecycle";
 import type { WatchRuntime, WatchRuntimeEvent, WatchRuntimeOptions, WatchSnapshot } from "./types";
-import { WATCH_RUNTIME_EVENT_TYPES, WATCH_RUNTIME_STATES } from "./types";
+import {
+  WATCH_RUNTIME_ERROR_MESSAGES,
+  WATCH_RUNTIME_EVENT_TYPES,
+  WATCH_RUNTIME_STATES,
+} from "./types";
 
 const DEFAULT_DEBOUNCE_MS = 150;
-const NOT_RUNNING_ERROR_MESSAGE = "Watch runtime is not running.";
-const STOPPED_ERROR_MESSAGE = "Watch runtime stopped before refresh completed.";
 
 type RefreshWaiter<TAgent> = {
   resolve: (snapshot: WatchSnapshot<TAgent>) => void;
@@ -262,11 +264,11 @@ function rejectWaiters<TAgent>(waiters: RefreshWaiter<TAgent>[], error: unknown)
 }
 
 function createNotRunningError(): Error {
-  return new Error(NOT_RUNNING_ERROR_MESSAGE);
+  return new Error(WATCH_RUNTIME_ERROR_MESSAGES.notRunning);
 }
 
 function createStoppedError(): Error {
-  return new Error(STOPPED_ERROR_MESSAGE);
+  return new Error(WATCH_RUNTIME_ERROR_MESSAGES.stoppedBeforeRefreshCompleted);
 }
 
 async function disconnectQuietly(source: { disconnect?(): Promise<void> | void }): Promise<void> {
