@@ -26,6 +26,8 @@ interface ConversationTranscriptRecord {
   text?: string;
 }
 
+type ConversationSignal = "active" | "completed" | "error";
+
 const nonEmptyStringSchema = z
   .string()
   .transform((value) => value.trim())
@@ -171,7 +173,7 @@ export function createCursorTranscriptSource(
     const agents: AgentSnapshot[] = [];
     let latestUserTask: string | undefined;
     let sawConversationRecord = false;
-    let sawErrorMarker = false;
+    let latestConversationSignal: ConversationSignal | undefined;
 
     for (let lineNumber = 0; lineNumber < lines.length; lineNumber += 1) {
       const rawLine = lines[lineNumber];
@@ -197,9 +199,15 @@ export function createCursorTranscriptSource(
         sawConversationRecord = true;
         if (conversationRecord.role === "user" && conversationRecord.text) {
           latestUserTask = sanitizeTaskSummary(conversationRecord.text);
+          latestConversationSignal = "active";
         }
-        if (conversationRecord.text && hasErrorMarker(conversationRecord.text)) {
-          sawErrorMarker = true;
+        if (conversationRecord.text) {
+          if (isAssistantRole(conversationRecord.role)) {
+            const signal = deriveConversationSignal(conversationRecord.text);
+            if (signal) {
+              latestConversationSignal = signal;
+            }
+          }
         }
         continue;
       }
@@ -243,7 +251,7 @@ export function createCursorTranscriptSource(
         id: agentId,
         name: deriveAgentName(agentId, sourcePath),
         kind: AGENT_KIND.local,
-        status: deriveConversationStatus(now, fileUpdatedAt, sawErrorMarker),
+        status: deriveConversationStatus(now, fileUpdatedAt, latestConversationSignal),
         taskSummary: latestUserTask ?? "Working",
         updatedAt: fileUpdatedAt,
         source: AGENT_SOURCE_KIND.cursorTranscripts,
@@ -286,14 +294,18 @@ function parseConversationRecord(value: unknown): ConversationTranscriptRecord |
   }
   const role = parsed.data.role;
   const entries = parsed.data.message?.content ?? [];
+  const textParts: string[] = [];
   for (const entry of entries) {
     if (entry.type !== "text" || typeof entry.text !== "string") {
       continue;
     }
     const text = entry.text.trim();
     if (text.length > 0) {
-      return { role, text };
+      textParts.push(text);
     }
+  }
+  if (textParts.length > 0) {
+    return { role, text: textParts.join("\n") };
   }
   return { role };
 }
@@ -311,10 +323,13 @@ function hasErrorMarker(value: string): boolean {
 function deriveConversationStatus(
   now: number,
   updatedAt: number,
-  sawErrorMarker: boolean,
+  latestSignal: ConversationSignal | undefined,
 ): AgentStatus {
-  if (sawErrorMarker) {
+  if (latestSignal === "error") {
     return AGENT_STATUS.error;
+  }
+  if (latestSignal === "completed") {
+    return AGENT_STATUS.completed;
   }
   const ageMs = Math.max(0, now - updatedAt);
   if (ageMs <= RUNNING_WINDOW_MS) {
@@ -334,4 +349,45 @@ function deriveAgentId(sourcePath: string): string {
 function deriveAgentName(agentId: string, sourcePath: string): string {
   const prefix = sourcePath.includes("/subagents/") ? "Subagent" : "Agent";
   return `${prefix} ${agentId.slice(0, 6)}`;
+}
+
+function isAssistantRole(role: string): boolean {
+  return role === "assistant";
+}
+
+function deriveConversationSignal(value: string): ConversationSignal | undefined {
+  const normalized = value.toLowerCase();
+  if (hasInProgressMarker(normalized)) {
+    return "active";
+  }
+  if (hasErrorMarker(value)) {
+    return "error";
+  }
+  if (hasCompletionMarker(value)) {
+    return "completed";
+  }
+  return undefined;
+}
+
+function hasCompletionMarker(value: string): boolean {
+  const normalized = value.toLowerCase();
+  if (hasInProgressMarker(normalized)) {
+    return false;
+  }
+  const hasNegativeCompletion =
+    /\b(not done|not completed|still working|in progress|wip|nu este gata|inca lucrez)\b/.test(
+      normalized,
+    );
+  if (hasNegativeCompletion) {
+    return false;
+  }
+  return /\b(done|completed|implemented|finished|all set|ready to test|ready for testing|gata|terminat|finalizat|cu succes)\b/.test(
+    normalized,
+  );
+}
+
+function hasInProgressMarker(normalizedValue: string): boolean {
+  return /\b(running command|processing|batch|step\s+\d+|in execut|executing|sleep\(|task start|still running)\b/.test(
+    normalizedValue,
+  );
 }
