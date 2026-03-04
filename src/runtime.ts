@@ -51,6 +51,11 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   let startPromise: Promise<void> | null = null;
   let stopPromise: Promise<void> | null = null;
 
+  function advanceLifecycleToken(): number {
+    lifecycleToken += 1;
+    return lifecycleToken;
+  }
+
   async function start(): Promise<void> {
     desiredRunning = true;
     if (state === "started") {
@@ -64,7 +69,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     }
 
     state = "starting";
-    const token = ++lifecycleToken;
+    const token = advanceLifecycleToken();
     const operation = (async () => {
       try {
         await source.connect?.();
@@ -123,7 +128,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     }
 
     state = "stopping";
-    const token = ++lifecycleToken;
+    const token = advanceLifecycleToken();
     clearDebounceTimer();
     closeSubscriptions();
     clearResubscribeTimers();
