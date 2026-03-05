@@ -33,7 +33,7 @@ Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core AP
 - [x] Keep temporary bridge by re-exporting core runtime types from `src/types.ts`
 - [x] Update `src/core/index.ts` to export local core modules
 - [x] Add tests validating new core contract exports
-- [ ] Document core contract usage in README (follow-up in Phase 3)
+- [x] Document core contract usage in README (follow-up in Phase 3)
 
 **Verification**
 - [x] New contract test fails before implementation (RED)
@@ -51,20 +51,20 @@ Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core AP
 
 **Verification**
 - [ ] Cursor output parity for snapshot/update/error/state events
-- [ ] `npm run check`
-- [ ] `npm run build`
+- [x] `npm run check`
+- [x] `npm run build`
 
 ### Phase 3 - Introduce provider-agnostic core observer API
 
-- [ ] Add `src/core/observer.ts` with provider-injected runtime composition
-- [ ] Expose new API in root exports
-- [ ] Add examples for provider-agnostic usage
-- [ ] Update README to lead with provider-agnostic API
+- [x] Add `src/core/observer.ts` with provider-injected runtime composition
+- [x] Expose new API in root exports
+- [x] Add examples for provider-agnostic usage
+- [x] Update README to lead with provider-agnostic API
 
 **Verification**
-- [ ] New API tests pass with injected Cursor provider
-- [ ] `npm run check`
-- [ ] `npm run build`
+- [x] New API tests pass with injected Cursor provider
+- [x] `npm run check`
+- [x] `npm run build`
 
 ### Phase 4 - Provider scaffolds for Claude/Codex/OpenCode
 

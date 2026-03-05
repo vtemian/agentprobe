@@ -7,7 +7,7 @@ It is designed in layers:
 - `core`: generic runtime + lifecycle diffing (tool-agnostic)
 - `providers/cursor`: Cursor transcript discovery + parsing adapter
 
-The current provider implementation is Cursor-focused, while the runtime API is generic and ready for additional providers (Claude Code, Codex, OpenCode, custom systems).
+The core observer API is provider-injected and tool-agnostic. Cursor is currently the built-in provider, with support planned for Claude Code, Codex, OpenCode, and custom systems.
 
 ## Install
 
@@ -15,29 +15,39 @@ The current provider implementation is Cursor-focused, while the runtime API is 
 npm install @agent-io/observer
 ```
 
-## Quick Start
+## Quick Start (Provider-Agnostic)
 
 ```ts
-import { createAgentSubscription } from "@agent-io/observer";
+import { createObserver } from "@agent-io/observer";
+import { createCursorTranscriptProvider } from "@agent-io/observer/providers/cursor";
 
-const subscription = createAgentSubscription({
-  projectPath: "/Users/me/my-project",
+const observer = createObserver({
+  provider: createCursorTranscriptProvider(),
+  workspacePaths: ["/Users/me/my-project"],
 });
 
-const disposeSnapshots = subscription.subscribeToSnapshots((event) => {
+const disposeSnapshots = observer.subscribeToSnapshots((event) => {
   console.log(event.snapshot.at, event.snapshot.agents.length);
 });
 
-const disposeUpdates = subscription.subscribeToAgentChanges((event) => {
+const disposeUpdates = observer.subscribeToAgentChanges((event) => {
   console.log(event.change.kind, event.agent.id);
 });
 
-await subscription.start();
+await observer.start();
 
 // later
 disposeSnapshots();
 disposeUpdates();
-await subscription.stop();
+await observer.stop();
+```
+
+## Cursor Convenience Wrapper
+
+If you only need Cursor transcripts, you can still use the wrapper API:
+
+```ts
+import { createAgentSubscription } from "@agent-io/observer";
 ```
 
 ## Public Entry Points
@@ -68,7 +78,10 @@ npm run build
 
 ## Examples
 
-See `examples/basic-subscription.ts`.
+See:
+
+- `examples/provider-observer.ts` (provider-injected API)
+- `examples/basic-subscription.ts` (Cursor convenience wrapper)
 
 ## Roadmap
 

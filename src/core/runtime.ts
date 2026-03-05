@@ -30,10 +30,6 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   const lifecycle = createLifecycleMapper(options.lifecycle);
   const debounceMs = Math.max(0, options.debounceMs ?? DEFAULT_DEBOUNCE_MS);
   const subscribeToChanges = options.subscribeToChanges;
-  const configuredWatchPaths =
-    options.watchPaths && options.watchPaths.length > 0
-      ? options.watchPaths
-      : (source.getWatchPaths?.() ?? []);
 
   const listeners = new Set<(event: WatchRuntimeEvent<TAgent, TStatus>) => void>();
   const subscriptions: ChangeSubscription[] = [];
@@ -260,6 +256,10 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       return;
     }
 
+    const configuredWatchPaths =
+      options.watchPaths && options.watchPaths.length > 0
+        ? options.watchPaths
+        : (source.getWatchPaths?.() ?? []);
     const normalizedWatchPaths = Array.from(
       new Set(
         configuredWatchPaths
