@@ -15,7 +15,9 @@
     "types": ["node", "vitest/globals"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@agent-io/core": ["src/index.ts"],
+      "@agent-io/core/providers/cursor": ["src/providers/cursor/index.ts"]
     },
     "outDir": "dist"
   },

@@ -1,6 +1,6 @@
-# @agent-io/observer
+# @agent-io/core
 
-`@agent-io/observer` is a TypeScript library for observing agent/session activity from transcript-like sources.
+`@agent-io/core` is a TypeScript library for observing agent/session activity from transcript-like sources.
 
 It is designed in layers:
 
@@ -12,17 +12,15 @@ The core observer API is provider-injected and tool-agnostic. Cursor is currentl
 ## Install
 
 ```bash
-npm install @agent-io/observer
+npm install @agent-io/core
 ```
 
 ## Quick Start (Provider-Agnostic)
 
 ```ts
-import { createObserver } from "@agent-io/observer";
-import { createCursorTranscriptProvider } from "@agent-io/observer/providers/cursor";
+import { createObserver } from "@agent-io/core";
 
 const observer = createObserver({
-  provider: createCursorTranscriptProvider(),
   workspacePaths: ["/Users/me/my-project"],
 });
 
@@ -42,14 +40,14 @@ disposeUpdates();
 await observer.stop();
 ```
 
+`createObserver` defaults to the built-in Cursor provider. You can still pass a custom `provider` if needed.
+
 ## Public Entry Points
 
 - Root package:
-  - `@agent-io/observer`
-- Core only:
-  - `@agent-io/observer/core`
+  - `@agent-io/core`
 - Cursor provider only:
-  - `@agent-io/observer/providers/cursor`
+  - `@agent-io/core/providers/cursor`
 
 ## Development
 

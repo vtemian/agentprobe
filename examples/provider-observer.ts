@@ -1,5 +1,4 @@
-import { createObserver, OBSERVER_EVENT_TYPES } from "@/core";
-import { createCursorTranscriptProvider } from "@/providers/cursor";
+import { createObserver, OBSERVER_EVENT_TYPES } from "@agent-io/core";
 
 async function main(): Promise<void> {
   const projectPath = process.argv[2];
@@ -8,7 +7,6 @@ async function main(): Promise<void> {
   }
 
   const observer = createObserver({
-    provider: createCursorTranscriptProvider(),
     workspacePaths: [projectPath],
   });
 

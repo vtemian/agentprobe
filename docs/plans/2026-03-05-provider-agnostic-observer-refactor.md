@@ -2,7 +2,7 @@
 
 ## Goal
 
-Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core API, while provider-specific transcript discovery/parsing/normalization are isolated under `providers/*`.
+Refactor `@agent-io/core` so consumers depend on a provider-agnostic core API, while provider-specific transcript discovery/parsing/normalization are isolated under `providers/*`.
 
 ## Outcomes
 
