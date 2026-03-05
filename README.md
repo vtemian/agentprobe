@@ -1,6 +1,6 @@
-# @agenti-io/observer
+# @agent-io/observer
 
-`@agenti-io/observer` is a TypeScript library for observing agent/session activity from transcript-like sources.
+`@agent-io/observer` is a TypeScript library for observing agent/session activity from transcript-like sources.
 
 It is designed in layers:
 
@@ -12,13 +12,13 @@ The current provider implementation is Cursor-focused, while the runtime API is 
 ## Install
 
 ```bash
-npm install @agenti-io/observer
+npm install @agent-io/observer
 ```
 
 ## Quick Start
 
 ```ts
-import { createAgentSubscription } from "@agenti-io/observer";
+import { createAgentSubscription } from "@agent-io/observer";
 
 const subscription = createAgentSubscription({
   projectPath: "/Users/me/my-project",
@@ -43,11 +43,11 @@ await subscription.stop();
 ## Public Entry Points
 
 - Root package:
-  - `@agenti-io/observer`
+  - `@agent-io/observer`
 - Core only:
-  - `@agenti-io/observer/core`
+  - `@agent-io/observer/core`
 - Cursor provider only:
-  - `@agenti-io/observer/providers/cursor`
+  - `@agent-io/observer/providers/cursor`
 
 ## Development
 
