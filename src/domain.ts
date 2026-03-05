@@ -16,7 +16,9 @@ export const AGENT_SOURCE_KIND = {
   cursorTranscripts: "cursor-transcripts",
   mock: "mock",
 } as const;
-export type AgentSourceKind = (typeof AGENT_SOURCE_KIND)[keyof typeof AGENT_SOURCE_KIND];
+export type AgentSourceKind =
+  | (typeof AGENT_SOURCE_KIND)[keyof typeof AGENT_SOURCE_KIND]
+  | (string & {});
 
 export interface AgentSnapshot {
   id: string;
