@@ -1,5 +1,5 @@
 {
-  "name": "@agent-watch/shared-watch",
+  "name": "@agenti-io/observer",
   "version": "0.1.0",
   "description": "Tool-agnostic watch runtime with transcript providers for coding agents.",
   "license": "MIT",

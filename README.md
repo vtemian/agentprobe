@@ -1,6 +1,6 @@
-# shared-watch
+# @agenti-io/observer
 
-`shared-watch` is a TypeScript library for observing agent/session activity from transcript-like sources.
+`@agenti-io/observer` is a TypeScript library for observing agent/session activity from transcript-like sources.
 
 It is designed in layers:
 
@@ -12,13 +12,13 @@ The current provider implementation is Cursor-focused, while the runtime API is 
 ## Install
 
 ```bash
-npm install @agent-watch/shared-watch
+npm install @agenti-io/observer
 ```
 
 ## Quick Start
 
 ```ts
-import { createAgentSubscription } from "@agent-watch/shared-watch";
+import { createAgentSubscription } from "@agenti-io/observer";
 
 const subscription = createAgentSubscription({
   projectPath: "/Users/me/my-project",
@@ -43,11 +43,11 @@ await subscription.stop();
 ## Public Entry Points
 
 - Root package:
-  - `@agent-watch/shared-watch`
+  - `@agenti-io/observer`
 - Core only:
-  - `@agent-watch/shared-watch/core`
+  - `@agenti-io/observer/core`
 - Cursor provider only:
-  - `@agent-watch/shared-watch/providers/cursor`
+  - `@agenti-io/observer/providers/cursor`
 
 ## Development
 
