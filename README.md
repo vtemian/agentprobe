@@ -42,14 +42,6 @@ disposeUpdates();
 await observer.stop();
 ```
 
-## Cursor Convenience Wrapper
-
-If you only need Cursor transcripts, you can still use the wrapper API:
-
-```ts
-import { createAgentSubscription } from "@agent-io/observer";
-```
-
 ## Public Entry Points
 
 - Root package:
@@ -81,7 +73,6 @@ npm run build
 See:
 
 - `examples/provider-observer.ts` (provider-injected API)
-- `examples/basic-subscription.ts` (Cursor convenience wrapper)
 
 ## Roadmap
 

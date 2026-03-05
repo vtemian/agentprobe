@@ -20,7 +20,7 @@ Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core AP
 ## Current State Summary
 
 - Generic runtime exists (`runtime`, `lifecycle`) but provider assumptions are mixed in top-level modules.
-- `createAgentSubscription` currently wires Cursor defaults directly.
+- The preferred public API is `createObserver` with injected providers.
 - Core entrypoint still had structural coupling to non-core files before this refactor sequence.
 
 ## Phase Plan
@@ -47,7 +47,7 @@ Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core AP
 - [x] Move `src/transcripts.ts` to `src/providers/cursor/transcripts.ts`
 - [x] Move provider-specific constants/domain to `src/providers/cursor/*`
 - [x] Validate root-vs-provider parity for exported Cursor APIs
-- [x] Add parity tests for `createAgentSubscription`
+- [x] Add parity tests for Cursor provider behavior
 
 **Verification**
 - [ ] Cursor output parity for snapshot/update/error/state events
@@ -87,8 +87,8 @@ Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core AP
   - transcript discovery path resolution and dedupe
   - parser behavior for flat and conversation-only transcripts
   - status heuristic edge cases
-- Root/provider parity tests:
-  - root exports and provider exports produce equivalent event streams for Cursor
+- Cursor provider parity tests:
+  - provider-injected observer yields stable Cursor event streams
 
 ## Risks and Mitigations
 

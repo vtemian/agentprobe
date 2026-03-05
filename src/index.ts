@@ -13,4 +13,3 @@ export {
   type AgentSourceReadResult,
   type AgentStatus,
 } from "./domain";
-export { AGENT_SUBSCRIPTION_EVENT_TYPES } from "./types";
