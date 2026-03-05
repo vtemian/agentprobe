@@ -1,6 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { AGENT_COMPLETION_QUIET_WINDOW_MS } from "@/constants";
 import {
   AGENT_KIND,
   AGENT_SOURCE_KIND,
@@ -11,6 +10,7 @@ import {
   type AgentStatus,
 } from "@/domain";
 import { z } from "zod";
+import { AGENT_COMPLETION_QUIET_WINDOW_MS } from "./constants";
 
 interface CursorTranscriptRecord {
   agentId: string;
@@ -198,6 +198,9 @@ export function createCursorTranscriptSource(
       if (!record) {
         const conversationRecord = parseConversationRecord(parsed);
         if (!conversationRecord) {
+          warnings.push(
+            formatLineWarning(sourcePath, lineNumber + 1, "Unrecognized transcript record."),
+          );
           continue;
         }
         sawConversationRecord = true;

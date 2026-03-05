@@ -87,4 +87,53 @@ describe("cursor transcripts", () => {
 
     rmSync(baseDir, { recursive: true, force: true });
   });
+
+  it("parses UTF-8 BOM prefixed jsonl lines", async () => {
+    const baseDir = path.join(
+      "/tmp",
+      `observer-transcripts-bom-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    );
+    mkdirSync(baseDir, { recursive: true });
+    const transcriptPath = path.join(baseDir, "session.jsonl");
+    writeFileSync(
+      transcriptPath,
+      `\uFEFF${JSON.stringify({
+        agentId: "a2",
+        agentName: "Agent Two",
+        status: "running",
+        task: "Task from BOM file",
+        updatedAt: 300,
+      })}\n`,
+      "utf8",
+    );
+
+    const source = createCursorTranscriptSource({ sourcePaths: [transcriptPath] });
+    source.connect();
+    const snapshot = await source.readSnapshot();
+
+    expect(snapshot.agents).toHaveLength(1);
+    expect(snapshot.agents[0]?.id).toBe("a2");
+
+    rmSync(baseDir, { recursive: true, force: true });
+  });
+
+  it("emits warnings for unrecognized json object lines", async () => {
+    const baseDir = path.join(
+      "/tmp",
+      `observer-transcripts-warning-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    );
+    mkdirSync(baseDir, { recursive: true });
+    const transcriptPath = path.join(baseDir, "session.jsonl");
+    writeFileSync(transcriptPath, `${JSON.stringify({ foo: "bar", unknown: true })}\n`, "utf8");
+
+    const source = createCursorTranscriptSource({ sourcePaths: [transcriptPath] });
+    source.connect();
+    const snapshot = await source.readSnapshot();
+
+    expect(snapshot.agents).toHaveLength(0);
+    expect(snapshot.warnings.length).toBeGreaterThan(0);
+    expect(snapshot.warnings[0]).toContain("Unrecognized transcript record");
+
+    rmSync(baseDir, { recursive: true, force: true });
+  });
 });

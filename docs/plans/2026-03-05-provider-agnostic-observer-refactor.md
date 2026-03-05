@@ -45,7 +45,7 @@ Refactor `@agent-io/observer` so consumers depend on a provider-agnostic core AP
 - [x] Move `src/agents.ts` logic to `src/providers/cursor/subscription.ts`
 - [x] Move `src/discovery.ts` to `src/providers/cursor/discovery.ts`
 - [x] Move `src/transcripts.ts` to `src/providers/cursor/transcripts.ts`
-- [ ] Move provider-specific constants/domain to `src/providers/cursor/*`
+- [x] Move provider-specific constants/domain to `src/providers/cursor/*`
 - [x] Validate root-vs-provider parity for exported Cursor APIs
 - [x] Add parity tests for `createAgentSubscription`
 
