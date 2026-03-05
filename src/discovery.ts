@@ -1,6 +1,5 @@
 import { readdirSync, statSync, type Dirent, type Stats } from "node:fs";
 import { homedir } from "node:os";
-import uniq from "lodash.uniq";
 import path from "node:path";
 
 export interface TranscriptDiscoveryOptions {
@@ -139,5 +138,5 @@ function readStats(entryPath: string): Stats | undefined {
 }
 
 function dedupePaths(paths: readonly string[]): string[] {
-  return uniq(paths);
+  return Array.from(new Set(paths));
 }

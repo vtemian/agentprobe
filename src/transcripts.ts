@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { AGENT_COMPLETION_QUIET_WINDOW_MS } from "../constants";
+import { AGENT_COMPLETION_QUIET_WINDOW_MS } from "./constants";
 import {
   AGENT_KIND,
   AGENT_SOURCE_KIND,
@@ -297,7 +297,9 @@ function parseFlatRecord(value: unknown): CursorTranscriptRecord | null {
   return parsed.success ? parsed.data : null;
 }
 
-function parseAgentKind(value: string | undefined): { success: true; value: AgentKind } | { success: false } {
+function parseAgentKind(
+  value: string | undefined,
+): { success: true; value: AgentKind } | { success: false } {
   if (value === undefined) {
     return { success: true, value: AGENT_KIND.local };
   }

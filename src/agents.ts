@@ -69,8 +69,16 @@ export type AgentSubscriptionEvent =
       error: unknown;
       agent: AgentSnapshot | undefined;
     }
-  | { type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.started; at: number; agent: AgentSnapshot | undefined }
-  | { type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.stopped; at: number; agent: AgentSnapshot | undefined };
+  | {
+      type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.started;
+      at: number;
+      agent: AgentSnapshot | undefined;
+    }
+  | {
+      type: typeof AGENT_SUBSCRIPTION_EVENT_TYPES.stopped;
+      at: number;
+      agent: AgentSnapshot | undefined;
+    };
 
 export interface AgentSubscriptionOptions {
   projectPath: string;

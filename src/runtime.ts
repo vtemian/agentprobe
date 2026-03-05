@@ -1,5 +1,4 @@
 import { createLifecycleMapper } from "./lifecycle";
-import uniq from "lodash.uniq";
 import type { WatchRuntime, WatchRuntimeEvent, WatchRuntimeOptions, WatchSnapshot } from "./types";
 import {
   WATCH_RUNTIME_ERROR_CODES,
@@ -140,12 +139,13 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     rejectActiveCycleWaiters(stoppedError);
 
     const operation = (async () => {
+      let shouldEmitStopped = false;
       try {
         await source.disconnect?.();
       } finally {
-        if (token !== lifecycleToken) {
-          return;
-        }
+        shouldEmitStopped = token === lifecycleToken;
+      }
+      if (shouldEmitStopped) {
         state = "stopped";
         emit({
           type: WATCH_RUNTIME_EVENT_TYPES.state,
@@ -260,8 +260,12 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       return;
     }
 
-    const normalizedWatchPaths = uniq(
-      configuredWatchPaths.map((watchPath) => watchPath.trim()).filter((watchPath) => watchPath.length > 0),
+    const normalizedWatchPaths = Array.from(
+      new Set(
+        configuredWatchPaths
+          .map((watchPath) => watchPath.trim())
+          .filter((watchPath) => watchPath.length > 0),
+      ),
     );
     for (const watchPath of normalizedWatchPaths) {
       trySubscribeWatchPath(watchPath, token);
