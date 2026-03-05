@@ -131,8 +131,9 @@ describe("cursor transcripts", () => {
     const snapshot = await source.readSnapshot();
 
     expect(snapshot.agents).toHaveLength(0);
-    expect(snapshot.warnings.length).toBeGreaterThan(0);
-    expect(snapshot.warnings[0]).toContain("Unrecognized transcript record");
+    expect(snapshot.warnings).toContainEqual(
+      expect.stringContaining("Unrecognized transcript record"),
+    );
 
     rmSync(baseDir, { recursive: true, force: true });
   });

@@ -57,11 +57,12 @@ describe("createObserver", () => {
     const snapshot = await observer.refreshNow();
     await observer.stop();
 
-    expect(snapshot.agents[0]?.status).toBe("idle");
-    expect(eventTypes).toContain(OBSERVER_EVENT_TYPES.started);
+    expect(snapshot.agents).toHaveLength(1);
+    expect(snapshot.agents[0].status).toBe("idle");
+    expect(eventTypes[0]).toBe(OBSERVER_EVENT_TYPES.started);
     expect(eventTypes).toContain(OBSERVER_EVENT_TYPES.snapshot);
     expect(eventTypes).toContain(OBSERVER_EVENT_TYPES.updated);
-    expect(eventTypes).toContain(OBSERVER_EVENT_TYPES.stopped);
+    expect(eventTypes.at(-1)).toBe(OBSERVER_EVENT_TYPES.stopped);
   });
 
   it("works with injected Cursor transcript provider", async () => {
@@ -96,7 +97,7 @@ describe("createObserver", () => {
 
     expect(snapshot.health.connected).toBe(true);
     expect(snapshot.agents.length).toBeGreaterThan(0);
-    expect(snapshot.agents[0]?.id).toBe("a1");
+    expect(snapshot.agents[0].id).toBe("a1");
 
     rmSync(transcriptDir, { recursive: true, force: true });
   });

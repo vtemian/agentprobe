@@ -85,7 +85,6 @@ interface ResolvedDiscovery {
 export function createObserver(options: ObserverOptions): Observer {
   const now = options.now ?? (() => Date.now());
   const listeners = new Set<(event: ObserverEvent) => void>();
-  const snapshotAtByRef = new WeakMap<object, number>();
   const workspacePaths = options.workspacePaths
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
@@ -128,7 +127,6 @@ export function createObserver(options: ObserverOptions): Observer {
 
   runtime.subscribe((event) => {
     if (event.type === WATCH_RUNTIME_EVENT_TYPES.snapshot) {
-      snapshotAtByRef.set(event.snapshot as object, event.at);
       previousSnapshot = latestSnapshot;
       latestSnapshot = {
         at: event.at,
@@ -206,7 +204,7 @@ export function createObserver(options: ObserverOptions): Observer {
 
   async function refreshNow(): Promise<ObserverSnapshot> {
     const snapshot = await runtime.refreshNow();
-    const at = snapshotAtByRef.get(snapshot as object) ?? now();
+    const at = latestSnapshot?.at ?? now();
     return {
       at,
       agents: snapshot.agents,

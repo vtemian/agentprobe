@@ -139,11 +139,24 @@ function isAgentSourceReadResult(value: unknown): value is AgentSourceReadResult
   if (!value || typeof value !== "object") {
     return false;
   }
-  const candidate = value as Partial<AgentSourceReadResult>;
-  return (
-    Array.isArray(candidate.agents) &&
-    typeof candidate.connected === "boolean" &&
-    typeof candidate.sourceLabel === "string" &&
-    Array.isArray(candidate.warnings)
-  );
+  if (!hasObjectProperty(value, "agents") || !Array.isArray(value.agents)) {
+    return false;
+  }
+  if (!hasObjectProperty(value, "connected") || typeof value.connected !== "boolean") {
+    return false;
+  }
+  if (!hasObjectProperty(value, "sourceLabel") || typeof value.sourceLabel !== "string") {
+    return false;
+  }
+  if (!hasObjectProperty(value, "warnings") || !Array.isArray(value.warnings)) {
+    return false;
+  }
+  return true;
+}
+
+function hasObjectProperty<TKey extends string>(
+  value: unknown,
+  key: TKey,
+): value is Record<TKey, unknown> {
+  return typeof value === "object" && value !== null && key in value;
 }

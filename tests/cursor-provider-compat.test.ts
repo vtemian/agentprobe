@@ -86,9 +86,9 @@ describe("cursor provider compatibility exports", () => {
     await subB.stop();
 
     expect(eventsA).toEqual(eventsB);
-    expect(eventsA).toContain("started");
+    expect(eventsA[0]).toBe("started");
     expect(eventsA).toContain("snapshot");
     expect(eventsA).toContain("updated");
-    expect(eventsA).toContain("stopped");
+    expect(eventsA.at(-1)).toBe("stopped");
   });
 });

@@ -43,10 +43,12 @@ describe("createWatchRuntime", () => {
     await runtime.refreshNow();
     await runtime.stop();
 
+    expect(events[0]).toBe(WATCH_RUNTIME_EVENT_TYPES.state);
+    expect(events[1]).toBe(WATCH_RUNTIME_STATES.started);
     expect(events).toContain(WATCH_RUNTIME_EVENT_TYPES.snapshot);
     expect(events).toContain(WATCH_RUNTIME_EVENT_TYPES.lifecycle);
-    expect(events).toContain(WATCH_RUNTIME_STATES.started);
-    expect(events).toContain(WATCH_RUNTIME_STATES.stopped);
+    expect(events.at(-2)).toBe(WATCH_RUNTIME_EVENT_TYPES.state);
+    expect(events.at(-1)).toBe(WATCH_RUNTIME_STATES.stopped);
   });
 
   it("throws a typed runtime error when refreshing while stopped", async () => {
@@ -63,8 +65,10 @@ describe("createWatchRuntime", () => {
       },
     });
 
-    await expect(runtime.refreshNow()).rejects.toSatisfy((error: unknown) => {
-      return isWatchRuntimeError(error) && error.code === "NOT_RUNNING";
-    });
+    const error = await runtime.refreshNow().catch((reason: unknown) => reason);
+    expect(isWatchRuntimeError(error)).toBe(true);
+    if (isWatchRuntimeError(error)) {
+      expect(error.code).toBe("NOT_RUNNING");
+    }
   });
 });
