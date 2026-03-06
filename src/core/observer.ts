@@ -220,9 +220,17 @@ export function createObserver(options: ObserverOptions): Observer {
     }
   }
 
+  async function stop(): Promise<void> {
+    await runtime.stop();
+    listeners.clear();
+    latestSnapshot = undefined;
+    previousSnapshot = undefined;
+    discovery = undefined;
+  }
+
   return {
     start: () => runtime.start(),
-    stop: () => runtime.stop(),
+    stop,
     refreshNow,
     getLatestSnapshot: () => latestSnapshot,
     subscribe,

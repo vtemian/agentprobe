@@ -24,19 +24,17 @@ const observer = createObserver({
   workspacePaths: ["/Users/me/my-project"],
 });
 
-const disposeSnapshots = observer.subscribeToSnapshots((event) => {
+observer.subscribeToSnapshots((event) => {
   console.log(event.snapshot.at, event.snapshot.agents.length);
 });
 
-const disposeUpdates = observer.subscribeToAgentChanges((event) => {
+observer.subscribeToAgentChanges((event) => {
   console.log(event.change.kind, event.agent.id);
 });
 
 await observer.start();
 
-// later
-disposeSnapshots();
-disposeUpdates();
+// later — stop() clears all subscriptions and resets state
 await observer.stop();
 ```
 
