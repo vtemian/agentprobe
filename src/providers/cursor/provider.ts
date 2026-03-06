@@ -75,8 +75,9 @@ export function createCursorTranscriptProvider(
     now: number = Date.now(),
   ): Promise<TranscriptReadResult> {
     const sourcePaths = inputs.map((input) => input.uri);
-    source = ensureSource(source, sourcePaths, sourceLabel, sourcePathKey);
-    sourcePathKey = buildSourcePathKey(sourcePaths);
+    const nextSourcePathKey = sourcePaths.join("\n");
+    source = ensureSource(source, sourcePaths, sourceLabel, sourcePathKey, nextSourcePathKey);
+    sourcePathKey = nextSourcePathKey;
     if (connected) {
       source.connect();
     }
@@ -101,14 +102,17 @@ export function createCursorTranscriptProvider(
   function normalize(readResult: TranscriptReadResult): CanonicalSnapshot {
     const snapshot = readResult.records
       .map((record) => record.payload)
-      .find((payload): payload is AgentSourceReadResult => isAgentSourceReadResult(payload));
+      .find(
+        (payload): payload is AgentSourceReadResult =>
+          agentSourceSnapshotSchema.safeParse(payload).success,
+      );
 
     const agents: CanonicalAgentSnapshot[] = (snapshot?.agents ?? []).map((agent) => ({
       id: agent.id,
       name: agent.name,
-      kind: mapAgentKind(agent.kind),
+      kind: normalizeAgentKind(agent.kind),
       isSubagent: agent.isSubagent,
-      status: mapAgentStatus(agent.status),
+      status: normalizeAgentStatus(agent.status),
       taskSummary: agent.taskSummary,
       startedAt: agent.startedAt,
       updatedAt: agent.updatedAt,
@@ -136,19 +140,15 @@ function ensureSource(
   sourcePaths: string[],
   sourceLabel: string,
   previousKey: string,
+  nextKey: string,
 ): CursorTranscriptSource {
-  const nextKey = buildSourcePathKey(sourcePaths);
   if (existing && nextKey === previousKey) {
     return existing;
   }
   return createCursorTranscriptSource({ sourcePaths, sourceLabel });
 }
 
-function buildSourcePathKey(sourcePaths: string[]): string {
-  return sourcePaths.join("\n");
-}
-
-function mapAgentKind(kind: AgentKind): CanonicalAgentSnapshot["kind"] {
+function normalizeAgentKind(kind: AgentKind): CanonicalAgentSnapshot["kind"] {
   switch (kind) {
     case "remote":
       return CANONICAL_AGENT_KIND.remote;
@@ -157,7 +157,7 @@ function mapAgentKind(kind: AgentKind): CanonicalAgentSnapshot["kind"] {
   }
 }
 
-function mapAgentStatus(status: AgentStatus): CanonicalAgentSnapshot["status"] {
+function normalizeAgentStatus(status: AgentStatus): CanonicalAgentSnapshot["status"] {
   switch (status) {
     case "error":
       return CANONICAL_AGENT_STATUS.error;
@@ -168,8 +168,4 @@ function mapAgentStatus(status: AgentStatus): CanonicalAgentSnapshot["status"] {
     case "running":
       return CANONICAL_AGENT_STATUS.running;
   }
-}
-
-function isAgentSourceReadResult(value: unknown): value is AgentSourceReadResult {
-  return agentSourceSnapshotSchema.safeParse(value).success;
 }
