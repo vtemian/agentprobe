@@ -252,7 +252,7 @@ function mergeSnapshotWarnings(
     health: {
       connected: normalized.health.connected,
       sourceLabel: normalized.health.sourceLabel,
-      warnings: warnings.length > 0 ? Array.from(new Set(warnings)) : [],
+      warnings: warnings.length > 0 ? [...new Set(warnings)] : [],
     },
   };
 }

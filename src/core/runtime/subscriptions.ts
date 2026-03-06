@@ -1,4 +1,3 @@
-import { uniq } from "lodash-es";
 import { toError } from "../errors";
 import {
   WATCH_RESUBSCRIBE_BASE_DELAY_MS,
@@ -56,7 +55,7 @@ export function createRuntimeSubscriptions(options: RuntimeSubscriptionsOptions)
   }
 
   function normalizeWatchPaths(watchPaths: readonly string[]): string[] {
-    return uniq(watchPaths.map((watchPath) => watchPath.trim()).filter((watchPath) => watchPath.length > 0));
+    return [...new Set(watchPaths.map((watchPath) => watchPath.trim()).filter((watchPath) => watchPath.length > 0))];
   }
 
   function onWatchedEvent(token: number): void {

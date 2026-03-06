@@ -121,5 +121,5 @@ function tryStatSync(filePath: string): Stats | undefined {
 }
 
 function dedupePaths(paths: readonly string[]): string[] {
-  return Array.from(new Set(paths));
+  return [...new Set(paths)];
 }
