@@ -77,7 +77,7 @@
     "opencode"
   ],
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
