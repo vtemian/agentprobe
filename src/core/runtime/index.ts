@@ -13,7 +13,12 @@ import {
   resolveWaiters,
 } from "./shared";
 import { createRuntimeSubscriptions } from "./subscriptions";
-import type { WatchRuntime, WatchRuntimeEvent, WatchRuntimeOptions, WatchSnapshot } from "@/core/types";
+import type {
+  WatchRuntime,
+  WatchRuntimeEvent,
+  WatchRuntimeOptions,
+  WatchSnapshot,
+} from "@/core/types";
 import { WATCH_RUNTIME_EVENT_TYPES } from "@/core/types";
 
 export function createWatchRuntime<TAgent, TStatus extends string = string>(

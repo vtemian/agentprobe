@@ -13,12 +13,18 @@ function workspaceToTranscriptDir(workspacePath: string): string {
 }
 
 function uniqueWorkspacePath(): string {
-  return path.join("/tmp", `observer-discovery-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  return path.join(
+    "/tmp",
+    `observer-discovery-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  );
 }
 
 function cleanupTranscriptDir(workspacePath: string): void {
   const workspaceId = path.resolve(workspacePath).replace(/^\/+/, "").split(/[\\/]/).join("-");
-  rmSync(path.join(homedir(), ".cursor", "projects", workspaceId), { recursive: true, force: true });
+  rmSync(path.join(homedir(), ".cursor", "projects", workspaceId), {
+    recursive: true,
+    force: true,
+  });
 }
 
 describe("cursor discovery", () => {

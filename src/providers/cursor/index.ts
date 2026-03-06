@@ -1,4 +1,8 @@
-export { resolveTranscriptDirectories, resolveTranscriptSourcePaths } from "./discovery";
+export {
+  resolveTranscriptDirectories,
+  resolveTranscriptSourcePaths,
+  type TranscriptDiscoveryOptions,
+} from "./discovery";
 export {
   createCursorTranscriptProvider,
   type CursorTranscriptProviderOptions,

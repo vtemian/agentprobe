@@ -2,15 +2,25 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { createObserver } from "@/index";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 describe("root createObserver default provider", () => {
+  const cleanupPaths: string[] = [];
+
+  afterEach(() => {
+    for (const p of cleanupPaths) {
+      rmSync(p, { recursive: true, force: true });
+    }
+    cleanupPaths.length = 0;
+  });
+
   it("defaults to Cursor provider when provider is omitted", async () => {
     const workspacePath = path.join(
       "/tmp",
       `observer-default-provider-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     );
     const transcriptDir = workspaceToTranscriptDir(workspacePath);
+    cleanupPaths.push(transcriptDir);
     const transcriptPath = path.join(transcriptDir, "session.jsonl");
     mkdirSync(transcriptDir, { recursive: true });
     writeFileSync(
@@ -37,8 +47,6 @@ describe("root createObserver default provider", () => {
     expect(snapshot.health.connected).toBe(true);
     expect(snapshot.agents.length).toBeGreaterThan(0);
     expect(snapshot.agents[0].id).toBe("default-provider-agent");
-
-    rmSync(transcriptDir, { recursive: true, force: true });
   });
 });
 

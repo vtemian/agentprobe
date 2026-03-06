@@ -10,7 +10,10 @@ import { describe, expect, it, vi } from "vitest";
 
 describe("resolveWaiters", () => {
   it("resolves every waiter with the given snapshot", () => {
-    const snapshot = { agents: [{ id: "a" }], health: { connected: true, sourceLabel: "t", warnings: [] } };
+    const snapshot = {
+      agents: [{ id: "a" }],
+      health: { connected: true, sourceLabel: "t", warnings: [] },
+    };
     const resolved: unknown[] = [];
     const waiters = [
       { resolve: (v: unknown) => resolved.push(v), reject: vi.fn() },
@@ -27,7 +30,10 @@ describe("resolveWaiters", () => {
 
   it("handles an empty waiters array", () => {
     expect(() =>
-      resolveWaiters([], { agents: [], health: { connected: true, sourceLabel: "t", warnings: [] } }),
+      resolveWaiters([], {
+        agents: [],
+        health: { connected: true, sourceLabel: "t", warnings: [] },
+      }),
     ).not.toThrow();
   });
 });

@@ -100,8 +100,7 @@ export function createObserver(options: ObserverOptions): Observer {
     disconnect: () => options.provider.disconnect?.(),
     readSnapshot: async (at?: number) => {
       const observedAt = at ?? now();
-      const resolved =
-        discovery ?? (await options.provider.discover(workspacePaths));
+      const resolved = discovery ?? (await options.provider.discover(workspacePaths));
       discovery = resolved;
       const readResult = await options.provider.read(resolved.inputs, observedAt);
       const normalized = await options.provider.normalize(readResult, observedAt);

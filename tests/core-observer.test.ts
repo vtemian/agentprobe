@@ -8,9 +8,18 @@ import {
   type TranscriptProvider,
 } from "@/core";
 import { createCursorTranscriptProvider } from "@/providers/cursor";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 describe("createObserver", () => {
+  const cleanupPaths: string[] = [];
+
+  afterEach(() => {
+    for (const p of cleanupPaths) {
+      rmSync(p, { recursive: true, force: true });
+    }
+    cleanupPaths.length = 0;
+  });
+
   it("composes runtime events with provider injection", async () => {
     let reads = 0;
     const provider: TranscriptProvider = {
@@ -71,6 +80,7 @@ describe("createObserver", () => {
       `observer-core-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     );
     const transcriptDir = workspaceToTranscriptDir(workspacePath);
+    cleanupPaths.push(transcriptDir);
     const transcriptPath = path.join(transcriptDir, "session.jsonl");
     mkdirSync(transcriptDir, { recursive: true });
     writeFileSync(
@@ -98,8 +108,6 @@ describe("createObserver", () => {
     expect(snapshot.health.connected).toBe(true);
     expect(snapshot.agents.length).toBeGreaterThan(0);
     expect(snapshot.agents[0].id).toBe("a1");
-
-    rmSync(transcriptDir, { recursive: true, force: true });
   });
 });
 

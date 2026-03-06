@@ -36,7 +36,6 @@ export const WATCH_RUNTIME_STATES = {
   stopped: "stopped",
 } as const;
 
-
 export interface WatchLifecycleEvent<TStatus extends string = string> {
   kind: WatchLifecycleKind;
   agentId: string;

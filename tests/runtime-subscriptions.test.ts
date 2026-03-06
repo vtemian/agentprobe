@@ -15,7 +15,9 @@ function createTestOptions(overrides: Record<string, unknown> = {}) {
 function createCallbackHolder() {
   const holder: { fire: () => void } = { fire: () => {} };
   return {
-    capture: (fn: () => void) => { holder.fire = fn; },
+    capture: (fn: () => void) => {
+      holder.fire = fn;
+    },
     fire: () => holder.fire(),
   };
 }
@@ -23,7 +25,9 @@ function createCallbackHolder() {
 function createErrorCallbackHolder() {
   const holder: { fire: (error: Error) => void } = { fire: () => {} };
   return {
-    capture: (fn: (error: Error) => void) => { holder.fire = fn; },
+    capture: (fn: (error: Error) => void) => {
+      holder.fire = fn;
+    },
     fire: (error: Error) => holder.fire(error),
   };
 }
@@ -195,7 +199,11 @@ describe("createRuntimeSubscriptions", () => {
       let subscribeCount = 0;
       const options = createTestOptions({
         watchPaths: ["/a"],
-        subscribeToChanges: (_path: string, _onEvent: () => void, onError: (error: Error) => void) => {
+        subscribeToChanges: (
+          _path: string,
+          _onEvent: () => void,
+          onError: (error: Error) => void,
+        ) => {
           subscribeCount++;
           errorCb.capture(onError);
           return { close: vi.fn() };

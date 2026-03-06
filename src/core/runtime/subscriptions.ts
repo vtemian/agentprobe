@@ -1,8 +1,5 @@
 import { toError } from "@/core/errors";
-import {
-  WATCH_RESUBSCRIBE_BASE_DELAY_MS,
-  WATCH_RESUBSCRIBE_MAX_DELAY_MS,
-} from "./shared";
+import { WATCH_RESUBSCRIBE_BASE_DELAY_MS, WATCH_RESUBSCRIBE_MAX_DELAY_MS } from "./shared";
 
 type Subscription = { close(): void };
 
@@ -35,7 +32,10 @@ export function createRuntimeSubscriptions(options: RuntimeSubscriptionsOptions)
   clearResubscribeTimers(): void;
 } {
   const subscriptions: ChangeSubscription[] = [];
-  const resubscribeState = new Map<string, { timer: ReturnType<typeof globalThis.setTimeout>; attempts: number }>();
+  const resubscribeState = new Map<
+    string,
+    { timer: ReturnType<typeof globalThis.setTimeout>; attempts: number }
+  >();
   let debounceTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   function initializeSubscriptions(token: number): void {
@@ -55,7 +55,11 @@ export function createRuntimeSubscriptions(options: RuntimeSubscriptionsOptions)
   }
 
   function normalizeWatchPaths(watchPaths: readonly string[]): string[] {
-    return [...new Set(watchPaths.map((watchPath) => watchPath.trim()).filter((watchPath) => watchPath.length > 0))];
+    return [
+      ...new Set(
+        watchPaths.map((watchPath) => watchPath.trim()).filter((watchPath) => watchPath.length > 0),
+      ),
+    ];
   }
 
   function onWatchedEvent(token: number): void {

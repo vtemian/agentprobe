@@ -1,15 +1,30 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createCursorTranscriptSource } from "@/providers/cursor/transcripts";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 describe("cursor transcripts", () => {
-  it("uses the newest agent snapshot per id across transcript files", async () => {
-    const baseDir = path.join(
+  const cleanupPaths: string[] = [];
+
+  afterEach(() => {
+    for (const p of cleanupPaths) {
+      rmSync(p, { recursive: true, force: true });
+    }
+    cleanupPaths.length = 0;
+  });
+
+  function createTempDir(label: string): string {
+    const dir = path.join(
       "/tmp",
-      `observer-transcripts-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      `observer-transcripts-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     );
-    mkdirSync(baseDir, { recursive: true });
+    mkdirSync(dir, { recursive: true });
+    cleanupPaths.push(dir);
+    return dir;
+  }
+
+  it("uses the newest agent snapshot per id across transcript files", async () => {
+    const baseDir = createTempDir("merge");
     const oldPath = path.join(baseDir, "old.jsonl");
     const newPath = path.join(baseDir, "new.jsonl");
 
@@ -43,16 +58,10 @@ describe("cursor transcripts", () => {
     expect(snapshot.agents).toHaveLength(1);
     expect(snapshot.agents[0]?.status).toBe("idle");
     expect(snapshot.agents[0]?.taskSummary).toBe("New task");
-
-    rmSync(baseDir, { recursive: true, force: true });
   });
 
   it("derives conversation-only task summary from user_query tags", async () => {
-    const baseDir = path.join(
-      "/tmp",
-      `observer-transcripts-conv-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    );
-    mkdirSync(baseDir, { recursive: true });
+    const baseDir = createTempDir("conv");
     const transcriptPath = path.join(baseDir, "session.jsonl");
     writeFileSync(
       transcriptPath,
@@ -84,16 +93,10 @@ describe("cursor transcripts", () => {
 
     expect(snapshot.agents).toHaveLength(1);
     expect(snapshot.agents[0]?.taskSummary).toBe("Investigate flaky test now");
-
-    rmSync(baseDir, { recursive: true, force: true });
   });
 
   it("parses UTF-8 BOM prefixed jsonl lines", async () => {
-    const baseDir = path.join(
-      "/tmp",
-      `observer-transcripts-bom-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    );
-    mkdirSync(baseDir, { recursive: true });
+    const baseDir = createTempDir("bom");
     const transcriptPath = path.join(baseDir, "session.jsonl");
     writeFileSync(
       transcriptPath,
@@ -113,16 +116,10 @@ describe("cursor transcripts", () => {
 
     expect(snapshot.agents).toHaveLength(1);
     expect(snapshot.agents[0]?.id).toBe("a2");
-
-    rmSync(baseDir, { recursive: true, force: true });
   });
 
   it("emits warnings for unrecognized json object lines", async () => {
-    const baseDir = path.join(
-      "/tmp",
-      `observer-transcripts-warning-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    );
-    mkdirSync(baseDir, { recursive: true });
+    const baseDir = createTempDir("warning");
     const transcriptPath = path.join(baseDir, "session.jsonl");
     writeFileSync(transcriptPath, `${JSON.stringify({ foo: "bar", unknown: true })}\n`, "utf8");
 
@@ -134,7 +131,5 @@ describe("cursor transcripts", () => {
     expect(snapshot.warnings).toContainEqual(
       expect.stringContaining("Unrecognized transcript record"),
     );
-
-    rmSync(baseDir, { recursive: true, force: true });
   });
 });

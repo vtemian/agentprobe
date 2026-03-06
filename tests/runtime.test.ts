@@ -76,7 +76,12 @@ describe("createWatchRuntime", () => {
 
   it("throws a typed runtime error when refreshing while stopped", async () => {
     const runtime = createWatchRuntime<TestAgent, TestStatus>({
-      source: { readSnapshot: () => ({ agents: [{ id: "a", status: "running" }], health: { connected: true, sourceLabel: "test", warnings: [] } }) },
+      source: {
+        readSnapshot: () => ({
+          agents: [{ id: "a", status: "running" }],
+          health: { connected: true, sourceLabel: "test", warnings: [] },
+        }),
+      },
       lifecycle: { getId: (agent) => agent.id, getStatus: (agent) => agent.status },
     });
 
@@ -169,7 +174,10 @@ describe("createWatchRuntime", () => {
       source: createTestSource({
         readSnapshot: () => {
           readCount++;
-          return { agents: [{ id: "a", status: "running" }], health: { connected: true, sourceLabel: "test", warnings: [] } };
+          return {
+            agents: [{ id: "a", status: "running" }],
+            health: { connected: true, sourceLabel: "test", warnings: [] },
+          };
         },
       }),
       lifecycle: { getId: (a) => a.id, getStatus: (a) => a.status },

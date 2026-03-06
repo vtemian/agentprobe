@@ -11,6 +11,12 @@ export {
   createWatchRuntime,
   isObserverUpdatedEvent,
   OBSERVER_EVENT_TYPES,
+  type Observer,
+  type ObserverEvent,
+  type ObserverOptions,
+  type ObserverSnapshot,
+  type ObserverSnapshotEvent,
+  type ObserverUpdatedEvent,
 } from "./core";
 export {
   toError,
@@ -63,20 +69,8 @@ export {
   type CursorTranscriptProviderOptions,
   type CursorTranscriptSource,
   type CursorTranscriptSourceOptions,
+  type TranscriptDiscoveryOptions,
 } from "./providers/cursor";
-export {
-  AGENT_KIND,
-  AGENT_LIFECYCLE_EVENT_KIND,
-  AGENT_SOURCE_KIND,
-  AGENT_STATUS,
-  type AgentKind,
-  type AgentLifecycleEvent,
-  type AgentLifecycleEventType,
-  type AgentSnapshot,
-  type AgentSourceKind,
-  type AgentSourceReadResult,
-  type AgentStatus,
-} from "./domain";
 
 export interface CreateObserverOptions extends Omit<ObserverOptions, "provider"> {
   provider?: TranscriptProvider;

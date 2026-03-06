@@ -3,7 +3,17 @@
   "version": "0.1.0",
   "description": "Tool-agnostic watch runtime with transcript providers for coding agents.",
   "license": "MIT",
+  "author": "Vlad Temian <vladtemian@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vtemian/agent-io.git"
+  },
+  "homepage": "https://github.com/vtemian/agent-io#readme",
+  "bugs": {
+    "url": "https://github.com/vtemian/agent-io/issues"
+  },
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,21 +21,35 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs"
+      "require": "./dist/core/index.cjs",
+      "default": "./dist/core/index.js"
     },
     "./providers/cursor": {
       "types": "./dist/providers/cursor/index.d.ts",
       "import": "./dist/providers/cursor/index.js",
-      "require": "./dist/providers/cursor/index.cjs"
+      "require": "./dist/providers/cursor/index.cjs",
+      "default": "./dist/providers/cursor/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "core": [
+        "dist/core/index.d.ts"
+      ],
+      "providers/cursor": [
+        "dist/providers/cursor/index.d.ts"
+      ]
     }
   },
   "files": [
     "dist",
+    "!dist/**/*.map",
     "README.md",
     "LICENSE"
   ],
