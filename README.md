@@ -1,6 +1,6 @@
-# @agent-io/core
+# @agentprobe/core
 
-`@agent-io/core` is a TypeScript library for observing agent/session activity from transcript-like sources.
+`@agentprobe/core` is a TypeScript library for observing agent/session activity from transcript-like sources.
 
 It is designed in layers:
 
@@ -12,13 +12,13 @@ The core observer API is provider-injected and tool-agnostic. Cursor is currentl
 ## Install
 
 ```bash
-npm install @agent-io/core
+npm install @agentprobe/core
 ```
 
 ## Quick Start (Provider-Agnostic)
 
 ```ts
-import { createObserver } from "@agent-io/core";
+import { createObserver } from "@agentprobe/core";
 
 const observer = createObserver({
   workspacePaths: ["/Users/me/my-project"],
@@ -101,9 +101,9 @@ When a provider exposes `subscribeToChanges`, runtime subscriptions:
 
 ## Public Entry Points
 
-- `@agent-io/core` — full package (core + Cursor provider, `createObserver` defaults to Cursor)
-- `@agent-io/core/core` — core runtime, lifecycle, model, and provider types only
-- `@agent-io/core/providers/cursor` — Cursor transcript provider only
+- `@agentprobe/core` — full package (core + Cursor provider, `createObserver` defaults to Cursor)
+- `@agentprobe/core/core` — core runtime, lifecycle, model, and provider types only
+- `@agentprobe/core/providers/cursor` — Cursor transcript provider only
 
 ## Development
 

@@ -1,4 +1,4 @@
-import { createObserver, OBSERVER_EVENT_TYPES } from "@agent-io/core";
+import { createObserver, OBSERVER_EVENT_TYPES } from "@agentprobe/core";
 
 async function main(): Promise<void> {
   const projectPath = process.argv[2];

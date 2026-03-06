@@ -16,8 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@agent-io/core": ["src/index.ts"],
-      "@agent-io/core/providers/cursor": ["src/providers/cursor/index.ts"]
+      "@agentprobe/core": ["src/index.ts"],
+      "@agentprobe/core/providers/cursor": ["src/providers/cursor/index.ts"]
     },
     "outDir": "dist"
   },
