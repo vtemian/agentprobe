@@ -53,10 +53,12 @@
     "opencode"
   ],
   "dependencies": {
+    "lodash-es": "^4.17.23",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",

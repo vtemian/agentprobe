@@ -39,25 +39,31 @@ export interface ObserverSnapshotEvent {
   agent: CanonicalAgentSnapshot | undefined;
 }
 
+export interface ObserverErroredEvent {
+  type: typeof OBSERVER_EVENT_TYPES.errored;
+  at: number;
+  error: Error;
+  agent: CanonicalAgentSnapshot | undefined;
+}
+
+export interface ObserverStartedEvent {
+  type: typeof OBSERVER_EVENT_TYPES.started;
+  at: number;
+  agent: CanonicalAgentSnapshot | undefined;
+}
+
+export interface ObserverStoppedEvent {
+  type: typeof OBSERVER_EVENT_TYPES.stopped;
+  at: number;
+  agent: CanonicalAgentSnapshot | undefined;
+}
+
 export type ObserverEvent =
   | ObserverSnapshotEvent
   | ObserverUpdatedEvent
-  | {
-      type: typeof OBSERVER_EVENT_TYPES.errored;
-      at: number;
-      error: Error;
-      agent: CanonicalAgentSnapshot | undefined;
-    }
-  | {
-      type: typeof OBSERVER_EVENT_TYPES.started;
-      at: number;
-      agent: CanonicalAgentSnapshot | undefined;
-    }
-  | {
-      type: typeof OBSERVER_EVENT_TYPES.stopped;
-      at: number;
-      agent: CanonicalAgentSnapshot | undefined;
-    };
+  | ObserverErroredEvent
+  | ObserverStartedEvent
+  | ObserverStoppedEvent;
 
 export interface ObserverOptions {
   provider: TranscriptProvider;

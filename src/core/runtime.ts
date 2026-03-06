@@ -1,3 +1,4 @@
+import { add, uniq } from "lodash-es";
 import { createLifecycleMapper } from "./lifecycle";
 import { toError } from "./errors";
 import type { WatchRuntime, WatchRuntimeEvent, WatchRuntimeOptions, WatchSnapshot } from "./types";
@@ -12,6 +13,19 @@ import {
 const DEFAULT_DEBOUNCE_MS = 150;
 const WATCH_RESUBSCRIBE_BASE_DELAY_MS = 500;
 const WATCH_RESUBSCRIBE_MAX_DELAY_MS = 8_000;
+const TOKEN_INCREMENT = 1;
+const INITIAL_LIFECYCLE_TOKEN = 0;
+const EMPTY_LENGTH = 0;
+const FIRST_RESUBSCRIBE_ATTEMPT = 1;
+const RESUBSCRIBE_EXPONENTIAL_BASE = 2;
+const REVERSE_ITERATION_STEP = 1;
+
+const WATCH_RUNTIME_INTERNAL_STATES = {
+  stopped: "stopped",
+  starting: "starting",
+  started: "started",
+  stopping: "stopping",
+} as const;
 
 type RefreshWaiter<TAgent> = {
   resolve: (snapshot: WatchSnapshot<TAgent>) => void;
@@ -22,6 +36,9 @@ type ChangeSubscription = {
   watchPath: string;
   close(): void;
 };
+
+type RuntimeStatus =
+  (typeof WATCH_RUNTIME_INTERNAL_STATES)[keyof typeof WATCH_RUNTIME_INTERNAL_STATES];
 
 export function createWatchRuntime<TAgent, TStatus extends string = string>(
   options: WatchRuntimeOptions<TAgent, TStatus>,
@@ -37,95 +54,115 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   const resubscribeTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
   const resubscribeAttempts = new Map<string, number>();
 
-  let state: "stopped" | "starting" | "started" | "stopping" = "stopped";
-  let desiredRunning = false;
-  let lifecycleToken = 0;
-  let pendingRefresh = false;
-  let refreshLoop: Promise<void> | null = null;
-  let debounceTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
-  let queuedWaiters: RefreshWaiter<TAgent>[] = [];
-  let activeCycleWaiters: RefreshWaiter<TAgent>[] = [];
-  let startPromise: Promise<void> | null = null;
-  let stopPromise: Promise<void> | null = null;
+  const runtimeState = {
+    state: WATCH_RUNTIME_INTERNAL_STATES.stopped as RuntimeStatus,
+    desiredRunning: false,
+    lifecycleToken: INITIAL_LIFECYCLE_TOKEN,
+    pendingRefresh: false,
+    refreshLoop: null as Promise<void> | null,
+    debounceTimer: null as ReturnType<typeof globalThis.setTimeout> | null,
+    queuedWaiters: [] as RefreshWaiter<TAgent>[],
+    activeCycleWaiters: [] as RefreshWaiter<TAgent>[],
+    startPromise: null as Promise<void> | null,
+    stopPromise: null as Promise<void> | null,
+  };
 
-  function advanceLifecycleToken(): number {
-    lifecycleToken += 1;
-    return lifecycleToken;
+  function isState(value: RuntimeStatus): boolean {
+    return runtimeState.state === value;
+  }
+
+  function isTokenCurrent(token: number): boolean {
+    return token === runtimeState.lifecycleToken;
+  }
+
+  function isStartedWithToken(token: number): boolean {
+    return isState(WATCH_RUNTIME_INTERNAL_STATES.started) && isTokenCurrent(token);
+  }
+
+  function nextLifecycleToken(): number {
+    runtimeState.lifecycleToken = add(runtimeState.lifecycleToken, TOKEN_INCREMENT);
+    return runtimeState.lifecycleToken;
+  }
+
+  async function runStartOperation(token: number): Promise<void> {
+    try {
+      await source.connect?.();
+      if (
+        !isTokenCurrent(token) ||
+        !isState(WATCH_RUNTIME_INTERNAL_STATES.starting) ||
+        !runtimeState.desiredRunning
+      ) {
+        if (isTokenCurrent(token)) {
+          runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopped;
+        }
+        await disconnectQuietly(source);
+        return;
+      }
+
+      initializeSubscriptions(token);
+      runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.started;
+      emit({
+        type: WATCH_RUNTIME_EVENT_TYPES.state,
+        at: now(),
+        state: WATCH_RUNTIME_STATES.started,
+      });
+      queueRefresh();
+    } catch (error) {
+      if (isTokenCurrent(token)) {
+        runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopped;
+        clearDebounceTimer();
+        closeSubscriptions();
+        lifecycle.reset();
+        rejectAllQueuedWaiters(error);
+      }
+      await disconnectQuietly(source);
+      throw error;
+    }
   }
 
   async function start(): Promise<void> {
-    desiredRunning = true;
-    if (state === "started") {
+    runtimeState.desiredRunning = true;
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.started)) {
       return;
     }
-    if (state === "starting" && startPromise) {
-      return startPromise;
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.starting) && runtimeState.startPromise) {
+      return runtimeState.startPromise;
     }
-    if (state === "stopping" && stopPromise) {
-      await stopPromise;
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.stopping) && runtimeState.stopPromise) {
+      await runtimeState.stopPromise;
     }
 
-    state = "starting";
-    const token = advanceLifecycleToken();
-    const operation = (async () => {
-      try {
-        await source.connect?.();
-        if (token !== lifecycleToken || state !== "starting" || !desiredRunning) {
-          if (token === lifecycleToken) {
-            state = "stopped";
-          }
-          await disconnectQuietly(source);
-          return;
-        }
-
-        initializeSubscriptions(token);
-        state = "started";
-        emit({
-          type: WATCH_RUNTIME_EVENT_TYPES.state,
-          at: now(),
-          state: WATCH_RUNTIME_STATES.started,
-        });
-        queueRefresh();
-      } catch (error) {
-        if (token === lifecycleToken) {
-          state = "stopped";
-          clearDebounceTimer();
-          closeSubscriptions();
-          lifecycle.reset();
-          rejectAllQueuedWaiters(error);
-        }
-        await disconnectQuietly(source);
-        throw error;
-      }
-    })();
-    startPromise = operation;
+    runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.starting;
+    const token = nextLifecycleToken();
+    const operation = runStartOperation(token);
+    runtimeState.startPromise = operation;
     try {
       await operation;
     } finally {
-      if (startPromise === operation) {
-        startPromise = null;
+      if (runtimeState.startPromise === operation) {
+        runtimeState.startPromise = null;
       }
     }
   }
 
   async function stop(): Promise<void> {
-    desiredRunning = false;
-    if (state === "stopped") {
+    runtimeState.desiredRunning = false;
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.stopped)) {
       return;
     }
-    if (state === "stopping" && stopPromise) {
-      return stopPromise;
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.stopping) && runtimeState.stopPromise) {
+      return runtimeState.stopPromise;
     }
-    if (state === "starting" && startPromise) {
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.starting) && runtimeState.startPromise) {
       try {
-        await startPromise;
+        await runtimeState.startPromise;
       } catch {
         // Continue stopping after failed start.
       }
     }
 
-    state = "stopping";
-    const token = advanceLifecycleToken();
+    runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopping;
+    const token = nextLifecycleToken();
     clearDebounceTimer();
     closeSubscriptions();
     clearResubscribeTimers();
@@ -140,10 +177,10 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       try {
         await source.disconnect?.();
       } finally {
-        shouldEmitStopped = token === lifecycleToken;
+        shouldEmitStopped = isTokenCurrent(token);
       }
       if (shouldEmitStopped) {
-        state = "stopped";
+        runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopped;
         emit({
           type: WATCH_RUNTIME_EVENT_TYPES.state,
           at: now(),
@@ -151,23 +188,23 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
         });
       }
     })();
-    stopPromise = operation;
+    runtimeState.stopPromise = operation;
     try {
       await operation;
     } finally {
-      if (stopPromise === operation) {
-        stopPromise = null;
+      if (runtimeState.stopPromise === operation) {
+        runtimeState.stopPromise = null;
       }
     }
   }
 
   function refreshNow(): Promise<WatchSnapshot<TAgent>> {
-    if (state !== "started") {
+    if (!isState(WATCH_RUNTIME_INTERNAL_STATES.started)) {
       return Promise.reject(createNotRunningError());
     }
 
     return new Promise<WatchSnapshot<TAgent>>((resolve, reject) => {
-      queuedWaiters.push({ resolve, reject });
+      runtimeState.queuedWaiters.push({ resolve, reject });
       queueRefresh();
     });
   }
@@ -180,36 +217,36 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function queueRefresh(): void {
-    if (state !== "started") {
+    if (!isState(WATCH_RUNTIME_INTERNAL_STATES.started)) {
       return;
     }
 
-    pendingRefresh = true;
+    runtimeState.pendingRefresh = true;
     ensureWorker();
   }
 
   function ensureWorker(): void {
-    if (refreshLoop) {
+    if (runtimeState.refreshLoop) {
       return;
     }
-    refreshLoop = runWorker();
+    runtimeState.refreshLoop = runWorker();
   }
 
   async function runWorker(): Promise<void> {
-    while (state === "started" && pendingRefresh) {
-      pendingRefresh = false;
-      const waitersForCycle = queuedWaiters;
-      queuedWaiters = [];
-      activeCycleWaiters = waitersForCycle;
+    while (isState(WATCH_RUNTIME_INTERNAL_STATES.started) && runtimeState.pendingRefresh) {
+      runtimeState.pendingRefresh = false;
+      const waitersForCycle = runtimeState.queuedWaiters;
+      runtimeState.queuedWaiters = [];
+      runtimeState.activeCycleWaiters = waitersForCycle;
       try {
         await runRefreshCycle(waitersForCycle);
       } finally {
-        activeCycleWaiters = [];
+        runtimeState.activeCycleWaiters = [];
       }
     }
 
-    refreshLoop = null;
-    if (state === "started" && pendingRefresh) {
+    runtimeState.refreshLoop = null;
+    if (isState(WATCH_RUNTIME_INTERNAL_STATES.started) && runtimeState.pendingRefresh) {
       ensureWorker();
     }
   }
@@ -219,7 +256,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       const at = now();
       const snapshot = await source.readSnapshot(at);
 
-      if (state !== "started") {
+      if (!isState(WATCH_RUNTIME_INTERNAL_STATES.started)) {
         rejectWaiters(waitersForCycle, createStoppedError());
         return;
       }
@@ -238,7 +275,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
       resolveWaiters(waitersForCycle, snapshot);
     } catch (error) {
-      if (state !== "started") {
+      if (!isState(WATCH_RUNTIME_INTERNAL_STATES.started)) {
         rejectWaiters(waitersForCycle, createStoppedError());
         return;
       }
@@ -258,15 +295,13 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     }
 
     const configuredWatchPaths =
-      options.watchPaths && options.watchPaths.length > 0
+      options.watchPaths && options.watchPaths.length > EMPTY_LENGTH
         ? options.watchPaths
         : (source.getWatchPaths?.() ?? []);
-    const normalizedWatchPaths = Array.from(
-      new Set(
-        configuredWatchPaths
-          .map((watchPath) => watchPath.trim())
-          .filter((watchPath) => watchPath.length > 0),
-      ),
+    const normalizedWatchPaths = uniq(
+      configuredWatchPaths
+        .map((watchPath) => watchPath.trim())
+        .filter((watchPath) => watchPath.length > EMPTY_LENGTH),
     );
     for (const watchPath of normalizedWatchPaths) {
       trySubscribeWatchPath(watchPath, token);
@@ -274,21 +309,21 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function onWatchedEvent(token: number): void {
-    if (state !== "started" || token !== lifecycleToken) {
+    if (!isStartedWithToken(token)) {
       return;
     }
 
-    if (debounceTimer) {
-      globalThis.clearTimeout(debounceTimer);
+    if (runtimeState.debounceTimer) {
+      globalThis.clearTimeout(runtimeState.debounceTimer);
     }
-    debounceTimer = globalThis.setTimeout(() => {
-      debounceTimer = null;
+    runtimeState.debounceTimer = globalThis.setTimeout(() => {
+      runtimeState.debounceTimer = null;
       queueRefresh();
     }, debounceMs);
   }
 
   function onWatchedError(watchPath: string, error: Error, token: number): void {
-    if (state !== "started" || token !== lifecycleToken) {
+    if (!isStartedWithToken(token)) {
       return;
     }
     emit({
@@ -300,7 +335,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function resubscribeWatchPath(watchPath: string, token: number): void {
-    if (!subscribeToChanges || state !== "started" || token !== lifecycleToken) {
+    if (!subscribeToChanges || !isStartedWithToken(token)) {
       return;
     }
 
@@ -309,11 +344,11 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function clearDebounceTimer(): void {
-    if (!debounceTimer) {
+    if (!runtimeState.debounceTimer) {
       return;
     }
-    globalThis.clearTimeout(debounceTimer);
-    debounceTimer = null;
+    globalThis.clearTimeout(runtimeState.debounceTimer);
+    runtimeState.debounceTimer = null;
   }
 
   function closeSubscriptions(): void {
@@ -341,8 +376,9 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   function trySubscribeWatchPath(watchPath: string, token: number): void {
     if (
       !subscribeToChanges ||
-      (state !== "started" && state !== "starting") ||
-      token !== lifecycleToken
+      (!isState(WATCH_RUNTIME_INTERNAL_STATES.started) &&
+        !isState(WATCH_RUNTIME_INTERNAL_STATES.starting)) ||
+      !isTokenCurrent(token)
     ) {
       return;
     }
@@ -365,7 +401,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function scheduleResubscribe(watchPath: string, token: number): void {
-    if (!subscribeToChanges || state !== "started" || token !== lifecycleToken) {
+    if (!subscribeToChanges || !isStartedWithToken(token)) {
       return;
     }
 
@@ -374,15 +410,18 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
       return;
     }
 
-    const attempt = (resubscribeAttempts.get(watchPath) ?? 0) + 1;
+    const attempt =
+      (resubscribeAttempts.get(watchPath) ?? INITIAL_LIFECYCLE_TOKEN) + FIRST_RESUBSCRIBE_ATTEMPT;
     resubscribeAttempts.set(watchPath, attempt);
     const delayMs = Math.min(
-      WATCH_RESUBSCRIBE_BASE_DELAY_MS * 2 ** Math.max(0, attempt - 1),
+      WATCH_RESUBSCRIBE_BASE_DELAY_MS *
+        RESUBSCRIBE_EXPONENTIAL_BASE **
+          Math.max(INITIAL_LIFECYCLE_TOKEN, attempt - FIRST_RESUBSCRIBE_ATTEMPT),
       WATCH_RESUBSCRIBE_MAX_DELAY_MS,
     );
     const timer = globalThis.setTimeout(() => {
       resubscribeTimers.delete(watchPath);
-      if (state !== "started" || token !== lifecycleToken) {
+      if (!isStartedWithToken(token)) {
         return;
       }
       resubscribeWatchPath(watchPath, token);
@@ -408,11 +447,15 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function unsubscribeByWatchPath(watchPath: string): void {
-    for (let index = subscriptions.length - 1; index >= 0; index -= 1) {
+    for (
+      let index = subscriptions.length - FIRST_RESUBSCRIBE_ATTEMPT;
+      index >= INITIAL_LIFECYCLE_TOKEN;
+      index -= REVERSE_ITERATION_STEP
+    ) {
       if (subscriptions[index]?.watchPath !== watchPath) {
         continue;
       }
-      const [subscription] = subscriptions.splice(index, 1);
+      const [subscription] = subscriptions.splice(index, FIRST_RESUBSCRIBE_ATTEMPT);
       try {
         subscription?.close();
       } catch {
@@ -422,14 +465,14 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function rejectAllQueuedWaiters(error: unknown): void {
-    const waiters = queuedWaiters;
-    queuedWaiters = [];
+    const waiters = runtimeState.queuedWaiters;
+    runtimeState.queuedWaiters = [];
     rejectWaiters(waiters, error);
   }
 
   function rejectActiveCycleWaiters(error: unknown): void {
-    const waiters = activeCycleWaiters;
-    activeCycleWaiters = [];
+    const waiters = runtimeState.activeCycleWaiters;
+    runtimeState.activeCycleWaiters = [];
     rejectWaiters(waiters, error);
   }
 
