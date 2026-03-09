@@ -1,4 +1,4 @@
-# AgentProbe: Real-Time Observability for Cursor, Claude Code, and AI Agents
+# @agentprobe/core
 
 [![CI](https://github.com/vtemian/agentprobe/actions/workflows/ci.yml/badge.svg)](https://github.com/vtemian/agentprobe/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@agentprobe/core)](https://www.npmjs.com/package/@agentprobe/core)
