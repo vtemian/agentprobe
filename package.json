@@ -1,6 +1,6 @@
 {
   "name": "@agentprobe/core",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Tool-agnostic watch runtime with transcript providers for coding agents.",
   "license": "MIT",
   "author": "Vlad Temian <vladtemian@gmail.com>",
