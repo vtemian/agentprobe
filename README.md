@@ -76,12 +76,10 @@ stateDiagram-v2
 Inside the `started` state, all work flows through a sequential event bus with three event types:
 
 - **`file-changed`** — dispatched after debounced fs.watch events; reads the snapshot and schedules a check-idle timer
-- **`check-idle`** — fires on a timer (default 5s); re-reads the snapshot to catch time-based status transitions (e.g. `running` → `idle` → `completed`) and self-reschedules while agents exist
+- **`check-idle`** — fires on a timer (default 2s); re-reads the snapshot to catch time-based status transitions (e.g. `running` → `idle` → `completed`) and self-reschedules while agents exist
 - **`refresh-requested`** — dispatched by `refreshNow()`; reads the snapshot and resolves waiting callers
 
-Events are processed one at a time (no overlapping reads). Each successful cycle emits:
-- `snapshot` (current full snapshot)
-- `lifecycle` (joined / statusChanged / heartbeat / left diffs)
+Events are processed one at a time (no overlapping reads). Subscribers only receive events when agent statuses actually change (joined, statusChanged, left). Heartbeat-only cycles are silent — the internal polling is invisible to consumers.
 
 ### Idle checking
 
@@ -90,7 +88,7 @@ Agent statuses depend on time elapsed since last activity. Without periodic re-e
 1. After every `file-changed` or `refresh-requested`, a check-idle timer is scheduled
 2. When it fires, the runtime re-reads the snapshot with the current timestamp
 3. If agents still exist, the timer self-reschedules
-4. Configurable via `checkIdleDelayMs` (default `5000`, set to `false` to disable)
+4. Configurable via `checkIdleDelayMs` (default `2000`, set to `false` to disable)
 
 ### Lifecycle model
 
