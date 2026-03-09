@@ -10,14 +10,6 @@ Unlike traditional observability tools (AgentOps, LangSmith) that require active
 
 ---
 
-### Why Passive Observability Matters
-
-**Read the full deep-dive on how AgentProbe reconstructs agent lifecycles from Cursor and Claude Code transcripts without instrumentation:**
-
-[AgentProbe: Real-Time Observability for AI Agents](https://blog.vtemian.com/project/agentprobe/)
-
----
-
 It is designed in layers:
 
 - `core`: generic runtime + lifecycle diffing (tool-agnostic)
@@ -154,6 +146,16 @@ npm run build
 See:
 
 - `examples/provider-observer.ts` (provider-injected API)
+
+---
+
+### Why Passive Observability Matters
+
+**Read the full deep-dive on how AgentProbe reconstructs agent lifecycles from Cursor and Claude Code transcripts without instrumentation:**
+
+[AgentProbe: Real-Time Observability for AI Agents](https://blog.vtemian.com/project/agentprobe/)
+
+---
 
 ## License
 
