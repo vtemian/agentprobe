@@ -9,14 +9,10 @@ import { createCursorTranscriptProvider } from "./providers/cursor";
 export {
   createLifecycleMapper,
   createWatchRuntime,
-  isObserverUpdatedEvent,
-  OBSERVER_EVENT_TYPES,
   type Observer,
-  type ObserverEvent,
+  type ObserverChangeEvent,
   type ObserverOptions,
   type ObserverSnapshot,
-  type ObserverSnapshotEvent,
-  type ObserverUpdatedEvent,
 } from "./core";
 export {
   toError,

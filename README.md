@@ -28,12 +28,8 @@ const observer = createObserver({
   workspacePaths: ["/Users/me/my-project"],
 });
 
-observer.subscribeToSnapshots((event) => {
-  console.log(event.snapshot.at, event.snapshot.agents.length);
-});
-
-observer.subscribeToAgentChanges((event) => {
-  console.log(event.change.kind, event.agent.id);
+observer.subscribe((event) => {
+  console.log(event.change.kind, event.agent.id, event.agent.status);
 });
 
 await observer.start();

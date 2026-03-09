@@ -1,38 +1,44 @@
+import type { CanonicalAgentSnapshot } from "../src/core/model";
 import { createObserver } from "../src/index";
 
 const DURATION_MS = 2 * 60 * 1000;
-let lastSnapshotAt = 0;
+
+const activeAgents = new Map<string, CanonicalAgentSnapshot>();
 
 async function main(): Promise<void> {
   const observer = createObserver({
     workspacePaths: [process.argv[2] ?? process.cwd()],
   });
 
-  observer.subscribeToSnapshots((event) => {
-    const now = performance.now();
-    const delta = lastSnapshotAt > 0 ? `+${(now - lastSnapshotAt).toFixed(0)}ms` : "init";
-    lastSnapshotAt = now;
+  observer.subscribe((event) => {
+    const { change, agent } = event;
 
-    const running = event.snapshot.agents.filter((a) => a.status === "running");
-    const idle = event.snapshot.agents.filter((a) => a.status === "idle");
-    const total = event.snapshot.agents.length;
+    if (change.kind === "left" || agent.status === "completed" || agent.status === "error") {
+      activeAgents.delete(agent.id);
+    } else {
+      activeAgents.set(agent.id, agent);
+    }
+
+    const running = [...activeAgents.values()].filter((a) => a.status === "running");
+    const idle = [...activeAgents.values()].filter((a) => a.status === "idle");
 
     if (running.length === 0 && idle.length === 0) {
-      console.log(`[${ts()}] (${delta}) ${total} agents, none active`);
+      console.log(`[${ts()}] ${event.snapshot.agents.length} agents, none active`);
       return;
     }
+
     const parts = [
       running.length > 0 ? `${running.length} running` : "",
       idle.length > 0 ? `${idle.length} idle` : "",
     ]
       .filter(Boolean)
       .join(", ");
-    console.log(`[${ts()}] (${delta}) ${parts} / ${total} total:`);
-    for (const agent of running) {
-      console.log(`  ▶ ${agent.id.slice(0, 8)} | ${agent.taskSummary.slice(0, 80)}`);
+    console.log(`[${ts()}] ${parts} / ${event.snapshot.agents.length} total:`);
+    for (const a of running) {
+      console.log(`  ▶ ${a.id.slice(0, 8)} | ${a.taskSummary.slice(0, 80)}`);
     }
-    for (const agent of idle) {
-      console.log(`  ◦ ${agent.id.slice(0, 8)} | ${agent.taskSummary.slice(0, 80)}`);
+    for (const a of idle) {
+      console.log(`  ◦ ${a.id.slice(0, 8)} | ${a.taskSummary.slice(0, 80)}`);
     }
   });
 

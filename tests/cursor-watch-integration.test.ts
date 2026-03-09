@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { createObserver } from "@/index";
-import type { ObserverSnapshotEvent } from "@/core/observer";
+import type { ObserverChangeEvent } from "@/core/observer";
 import { createCursorTranscriptProvider } from "@/providers/cursor";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -45,12 +45,12 @@ describe("cursor watch integration", () => {
     });
     observers.push(observer);
 
-    const snapshots: ObserverSnapshotEvent[] = [];
-    observer.subscribeToSnapshots((event) => snapshots.push(event));
+    const events: ObserverChangeEvent[] = [];
+    observer.subscribe((event) => events.push(event));
 
     await observer.start();
-    await waitForSnapshotCount(snapshots, 1, 3000);
-    expect(snapshots[0].snapshot.agents.some((a) => a.id === "agent-1")).toBe(true);
+    await waitForCount(events, 1, 3000);
+    expect(events.some((e) => e.agent.id === "agent-1")).toBe(true);
 
     writeTranscriptRecord(path.join(transcriptDir, "session-b.jsonl"), {
       agentId: "agent-2",
@@ -61,9 +61,8 @@ describe("cursor watch integration", () => {
       updatedAt: Date.now(),
     });
 
-    await waitForSnapshotCount(snapshots, 2, 3000);
-    const latestSnapshot = snapshots[snapshots.length - 1];
-    expect(latestSnapshot.snapshot.agents.some((a) => a.id === "agent-2")).toBe(true);
+    await waitForCount(events, 2, 3000);
+    expect(events.some((e) => e.agent.id === "agent-2")).toBe(true);
   });
 
   it("observer with watch disabled does not re-read on file changes", async () => {
@@ -88,11 +87,11 @@ describe("cursor watch integration", () => {
     });
     observers.push(observer);
 
-    const snapshots: ObserverSnapshotEvent[] = [];
-    observer.subscribeToSnapshots((event) => snapshots.push(event));
+    const events: ObserverChangeEvent[] = [];
+    observer.subscribe((event) => events.push(event));
 
     await observer.start();
-    await waitForSnapshotCount(snapshots, 1, 3000);
+    await waitForCount(events, 1, 3000);
 
     writeTranscriptRecord(path.join(transcriptDir, "session-b.jsonl"), {
       agentId: "agent-2",
@@ -104,7 +103,7 @@ describe("cursor watch integration", () => {
     });
 
     await delay(500);
-    expect(snapshots).toHaveLength(1);
+    expect(events.every((e) => e.agent.id === "agent-1")).toBe(true);
   });
 });
 
@@ -125,17 +124,11 @@ function writeTranscriptRecord(filePath: string, record: Record<string, unknown>
   writeFileSync(filePath, `${JSON.stringify(record)}\n`, { encoding: "utf8", flag: "a" });
 }
 
-async function waitForSnapshotCount(
-  snapshots: unknown[],
-  count: number,
-  timeoutMs: number,
-): Promise<void> {
+async function waitForCount(items: unknown[], count: number, timeoutMs: number): Promise<void> {
   const start = Date.now();
-  while (snapshots.length < count) {
+  while (items.length < count) {
     if (Date.now() - start > timeoutMs) {
-      throw new Error(
-        `Expected ${count} snapshot(s), got ${snapshots.length} after ${timeoutMs}ms`,
-      );
+      throw new Error(`Expected ${count} item(s), got ${items.length} after ${timeoutMs}ms`);
     }
     await delay(50);
   }

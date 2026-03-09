@@ -1,12 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import {
-  createObserver,
-  OBSERVER_EVENT_TYPES,
-  PROVIDER_KINDS,
-  type TranscriptProvider,
-} from "@/core";
+import { createObserver, PROVIDER_KINDS, type TranscriptProvider } from "@/core";
+import type { ObserverChangeEvent } from "@/core/observer";
 import { createCursorTranscriptProvider } from "@/providers/cursor";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -20,7 +16,7 @@ describe("createObserver", () => {
     cleanupPaths.length = 0;
   });
 
-  it("composes runtime events with provider injection", async () => {
+  it("emits change events with provider injection", async () => {
     let reads = 0;
     const provider: TranscriptProvider = {
       id: PROVIDER_KINDS.cursor,
@@ -59,8 +55,8 @@ describe("createObserver", () => {
       now: () => 1_000 + reads,
     });
 
-    const eventTypes: string[] = [];
-    observer.subscribe((event) => eventTypes.push(event.type));
+    const changes: ObserverChangeEvent[] = [];
+    observer.subscribe((event) => changes.push(event));
 
     await observer.start();
     const snapshot = await observer.refreshNow();
@@ -68,10 +64,8 @@ describe("createObserver", () => {
 
     expect(snapshot.agents).toHaveLength(1);
     expect(snapshot.agents[0].status).toBe("idle");
-    expect(eventTypes[0]).toBe(OBSERVER_EVENT_TYPES.started);
-    expect(eventTypes).toContain(OBSERVER_EVENT_TYPES.snapshot);
-    expect(eventTypes).toContain(OBSERVER_EVENT_TYPES.updated);
-    expect(eventTypes.at(-1)).toBe(OBSERVER_EVENT_TYPES.stopped);
+    expect(changes.some((e) => e.change.kind === "joined")).toBe(true);
+    expect(changes.some((e) => e.change.kind === "statusChanged")).toBe(true);
   });
 
   it("works with injected Cursor transcript provider", async () => {

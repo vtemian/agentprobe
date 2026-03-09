@@ -1,5 +1,5 @@
 import { createWatchRuntime } from "./runtime/index";
-import { WATCH_RUNTIME_EVENT_TYPES, WATCH_RUNTIME_STATES, type WatchSource } from "./types";
+import { WATCH_RUNTIME_EVENT_TYPES, type WatchSource } from "./types";
 import type { CanonicalAgentSnapshot, CanonicalAgentStatus } from "./model";
 import type {
   CanonicalSnapshot,
@@ -9,60 +9,17 @@ import type {
 } from "./providers";
 import type { WatchHealth, WatchLifecycleEvent } from "./types";
 
-export const OBSERVER_EVENT_TYPES = {
-  snapshot: "snapshot",
-  updated: "updated",
-  errored: "errored",
-  started: "started",
-  stopped: "stopped",
-} as const;
-
 export interface ObserverSnapshot {
   at: number;
   agents: CanonicalAgentSnapshot[];
   health: WatchHealth;
 }
 
-export interface ObserverUpdatedEvent {
-  type: typeof OBSERVER_EVENT_TYPES.updated;
-  at: number;
+export interface ObserverChangeEvent {
   change: WatchLifecycleEvent<CanonicalAgentStatus>;
   agent: CanonicalAgentSnapshot;
   snapshot: ObserverSnapshot;
 }
-
-export interface ObserverSnapshotEvent {
-  type: typeof OBSERVER_EVENT_TYPES.snapshot;
-  at: number;
-  snapshot: ObserverSnapshot;
-  agent: CanonicalAgentSnapshot | undefined;
-}
-
-export interface ObserverErroredEvent {
-  type: typeof OBSERVER_EVENT_TYPES.errored;
-  at: number;
-  error: Error;
-  agent: CanonicalAgentSnapshot | undefined;
-}
-
-export interface ObserverStartedEvent {
-  type: typeof OBSERVER_EVENT_TYPES.started;
-  at: number;
-  agent: CanonicalAgentSnapshot | undefined;
-}
-
-export interface ObserverStoppedEvent {
-  type: typeof OBSERVER_EVENT_TYPES.stopped;
-  at: number;
-  agent: CanonicalAgentSnapshot | undefined;
-}
-
-export type ObserverEvent =
-  | ObserverSnapshotEvent
-  | ObserverUpdatedEvent
-  | ObserverErroredEvent
-  | ObserverStartedEvent
-  | ObserverStoppedEvent;
 
 export interface ObserverOptions {
   provider: TranscriptProvider;
@@ -76,15 +33,12 @@ export interface Observer {
   start(): Promise<void>;
   stop(): Promise<void>;
   refreshNow(): Promise<ObserverSnapshot>;
-  getLatestSnapshot(): ObserverSnapshot | undefined;
-  subscribe(listener: (event: ObserverEvent) => void): () => void;
-  subscribeToAgentChanges(listener: (event: ObserverUpdatedEvent) => void): () => void;
-  subscribeToSnapshots(listener: (event: ObserverSnapshotEvent) => void): () => void;
+  subscribe(listener: (event: ObserverChangeEvent) => void): () => void;
 }
 
 export function createObserver(options: ObserverOptions): Observer {
   const now = options.now ?? (() => Date.now());
-  const listeners = new Set<(event: ObserverEvent) => void>();
+  const listeners = new Set<(event: ObserverChangeEvent) => void>();
   const workspacePaths = options.workspacePaths
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
@@ -133,12 +87,6 @@ export function createObserver(options: ObserverOptions): Observer {
         agents: event.snapshot.agents,
         health: event.snapshot.health,
       };
-      emit({
-        type: OBSERVER_EVENT_TYPES.snapshot,
-        at: event.at,
-        snapshot: latestSnapshot,
-        agent: undefined,
-      });
       return;
     }
 
@@ -153,53 +101,15 @@ export function createObserver(options: ObserverOptions): Observer {
         if (!agent) {
           continue;
         }
-        emit({
-          type: OBSERVER_EVENT_TYPES.updated,
-          at: event.at,
-          change,
-          agent,
-          snapshot: latestSnapshot,
-        });
+        emit({ change, agent, snapshot: latestSnapshot });
       }
       return;
     }
-
-    if (event.type === WATCH_RUNTIME_EVENT_TYPES.error) {
-      emit({
-        type: OBSERVER_EVENT_TYPES.errored,
-        at: event.at,
-        error: event.error,
-        agent: undefined,
-      });
-      return;
-    }
-
-    if (event.state === WATCH_RUNTIME_STATES.started) {
-      emit({ type: OBSERVER_EVENT_TYPES.started, at: event.at, agent: undefined });
-      return;
-    }
-    emit({ type: OBSERVER_EVENT_TYPES.stopped, at: event.at, agent: undefined });
   });
 
-  function subscribe(listener: (event: ObserverEvent) => void): () => void {
+  function subscribe(listener: (event: ObserverChangeEvent) => void): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);
-  }
-
-  function subscribeToAgentChanges(listener: (event: ObserverUpdatedEvent) => void): () => void {
-    return subscribe((event) => {
-      if (isObserverUpdatedEvent(event)) {
-        listener(event);
-      }
-    });
-  }
-
-  function subscribeToSnapshots(listener: (event: ObserverSnapshotEvent) => void): () => void {
-    return subscribe((event) => {
-      if (event.type === OBSERVER_EVENT_TYPES.snapshot) {
-        listener(event);
-      }
-    });
   }
 
   async function refreshNow(): Promise<ObserverSnapshot> {
@@ -212,7 +122,7 @@ export function createObserver(options: ObserverOptions): Observer {
     };
   }
 
-  function emit(event: ObserverEvent): void {
+  function emit(event: ObserverChangeEvent): void {
     for (const listener of listeners) {
       try {
         listener(event);
@@ -234,15 +144,8 @@ export function createObserver(options: ObserverOptions): Observer {
     start: () => runtime.start(),
     stop,
     refreshNow,
-    getLatestSnapshot: () => latestSnapshot,
     subscribe,
-    subscribeToAgentChanges,
-    subscribeToSnapshots,
   };
-}
-
-export function isObserverUpdatedEvent(event: ObserverEvent): event is ObserverUpdatedEvent {
-  return event.type === OBSERVER_EVENT_TYPES.updated;
 }
 
 function mergeSnapshotWarnings(
