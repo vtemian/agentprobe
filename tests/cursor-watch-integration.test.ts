@@ -39,7 +39,7 @@ describe("cursor watch integration", () => {
 
     const provider = cursor({ watch: { debounceMs: 50 } });
     const observer = createObserver({
-      provider,
+      providers: [provider],
       workspacePaths: [workspacePath],
       debounceMs: 50,
     });
@@ -82,7 +82,7 @@ describe("cursor watch integration", () => {
 
     const provider = cursor({ watch: false });
     const observer = createObserver({
-      provider,
+      providers: [provider],
       workspacePaths: [workspacePath],
     });
     observers.push(observer);

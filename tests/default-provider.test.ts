@@ -14,7 +14,7 @@ describe("root createObserver default provider", () => {
     cleanupPaths.length = 0;
   });
 
-  it("defaults to Cursor provider when provider is omitted", async () => {
+  it("defaults to both providers and discovers agents when providers is omitted", async () => {
     const workspacePath = path.join(
       "/tmp",
       `observer-default-provider-${Date.now()}-${Math.random().toString(16).slice(2)}`,

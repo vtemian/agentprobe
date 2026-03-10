@@ -4,11 +4,14 @@ import {
   type ObserverOptions,
   type TranscriptProvider,
 } from "./core";
+import { createCompositeProvider } from "./core/composite";
+import { claudeCode } from "./providers/claude-code";
 import { cursor } from "./providers/cursor";
 
 export {
   createLifecycleMapper,
   createWatchRuntime,
+  createCompositeProvider,
   type Observer,
   type ObserverChangeEvent,
   type ObserverOptions,
@@ -72,14 +75,35 @@ export {
   type CursorWatchOptions,
   type TranscriptDiscoveryOptions,
 } from "./providers/cursor";
+export {
+  claudeCode,
+  resolveSessionDirectories,
+  resolveSessionSourcePaths,
+  encodeWorkspacePath,
+  createClaudeCodeTranscriptSource,
+  createClaudeCodeWatch,
+  CLAUDE_CODE_WATCH_DEBOUNCE_MS,
+  type ClaudeCodeOptions,
+  type ClaudeCodeTranscriptSource,
+  type ClaudeCodeTranscriptSourceOptions,
+  type ClaudeCodeTranscriptSourceResult,
+  type ClaudeCodeWatch,
+  type ClaudeCodeWatchOptions,
+  type SessionDiscoveryOptions,
+} from "./providers/claude-code";
 
 export interface CreateObserverOptions extends Omit<ObserverOptions, "provider"> {
-  provider?: TranscriptProvider;
+  providers?: TranscriptProvider[];
 }
 
 export function createObserver(options: CreateObserverOptions): Observer {
+  const providers = options.providers ?? [cursor(), claudeCode()];
+  const provider = providers.length === 1
+    ? providers[0]
+    : createCompositeProvider(providers);
+
   return createCoreObserver({
     ...options,
-    provider: options.provider ?? cursor(),
+    provider,
   });
 }
