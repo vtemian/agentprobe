@@ -1,3 +1,4 @@
+export { createCompositeProvider } from "./composite";
 export { createLifecycleMapper } from "./lifecycle";
 export {
   createObserver,
