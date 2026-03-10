@@ -8,6 +8,7 @@ import { createCompositeProvider } from "./core/composite";
 import { claudeCode } from "./providers/claude-code";
 import { cursor } from "./providers/cursor";
 
+// --- Core: observer, composite, lifecycle, watch runtime ---
 export {
   createLifecycleMapper,
   createWatchRuntime,
@@ -17,14 +18,15 @@ export {
   type ObserverOptions,
   type ObserverSnapshot,
 } from "./core";
+
+// --- Errors ---
 export {
-  toError,
   isWatchRuntimeError,
   WatchRuntimeError,
-  WATCH_RUNTIME_ERROR_CODES,
-  WATCH_RUNTIME_ERROR_MESSAGES,
   type WatchRuntimeErrorCode,
 } from "./core/errors";
+
+// --- Model types ---
 export {
   CANONICAL_AGENT_STATUS,
   CANONICAL_AGENT_KIND,
@@ -32,6 +34,8 @@ export {
   type CanonicalAgentKind,
   type CanonicalAgentSnapshot,
 } from "./core/model";
+
+// --- Provider contract types ---
 export {
   PROVIDER_KINDS,
   type ProviderKind,
@@ -42,6 +46,8 @@ export {
   type CanonicalSnapshot,
   type TranscriptProvider,
 } from "./core/providers";
+
+// --- Watch runtime types ---
 export {
   WATCH_LIFECYCLE_KIND,
   WATCH_RUNTIME_EVENT_TYPES,
@@ -60,36 +66,19 @@ export {
   type WatchRuntimeEvent,
   type WatchRuntime,
 } from "./core/types";
+
+// --- Provider factories (consumer-facing) ---
+// Internal provider utilities (discovery, watch factories, transcript sources,
+// debounce constants) remain accessible via subpath imports:
+//   @agentprobe/core/providers/cursor
+//   @agentprobe/core/providers/claude-code
 export {
-  resolveTranscriptDirectories,
-  resolveTranscriptSourcePaths,
   cursor,
-  createCursorTranscriptSource,
-  createCursorWatch,
-  CURSOR_WATCH_DEBOUNCE_MS,
   type CursorOptions,
-  type CursorTranscriptSource,
-  type CursorTranscriptSourceOptions,
-  type TranscriptSourceResult,
-  type CursorWatch,
-  type CursorWatchOptions,
-  type TranscriptDiscoveryOptions,
 } from "./providers/cursor";
 export {
   claudeCode,
-  resolveSessionDirectories,
-  resolveSessionSourcePaths,
-  encodeWorkspacePath,
-  createClaudeCodeTranscriptSource,
-  createClaudeCodeWatch,
-  CLAUDE_CODE_WATCH_DEBOUNCE_MS,
   type ClaudeCodeOptions,
-  type ClaudeCodeTranscriptSource,
-  type ClaudeCodeTranscriptSourceOptions,
-  type ClaudeCodeTranscriptSourceResult,
-  type ClaudeCodeWatch,
-  type ClaudeCodeWatchOptions,
-  type SessionDiscoveryOptions,
 } from "./providers/claude-code";
 
 export interface CreateObserverOptions extends Omit<ObserverOptions, "provider"> {
