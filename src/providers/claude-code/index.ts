@@ -12,6 +12,10 @@ export {
   type ClaudeCodeTranscriptSourceResult,
 } from "./transcripts";
 export {
+  claudeCode,
+  type ClaudeCodeOptions,
+} from "./provider";
+export {
   createClaudeCodeWatch,
   CLAUDE_CODE_WATCH_DEBOUNCE_MS,
   type ClaudeCodeWatch,
