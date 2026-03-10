@@ -42,6 +42,7 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
     const inputs: DiscoveryInput[] = sourcePaths.map((sourcePath) => ({
       uri: sourcePath,
       kind: "file",
+      metadata: { providerId: PROVIDER_KINDS.cursor },
     }));
     cachedDiscovery = { inputs, watchPaths, warnings: [] };
     cachedFileList = currentFileList;
