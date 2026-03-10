@@ -18,7 +18,7 @@ const contentEntrySchema = z.object({
   text: z.string().optional(),
   name: z.string().optional(),
   id: z.string().optional(),
-  input: z.record(z.unknown()).optional(),
+  input: z.record(z.string(), z.unknown()).optional(),
   thinking: z.string().optional(),
   signature: z.string().optional(),
 });
