@@ -1,6 +1,11 @@
 import { readdirSync, statSync, type Stats } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import {
+  normalizeWorkspacePath,
+  tryStatSync,
+  dedupePaths,
+} from "@/providers/shared/discovery-utils";
 
 export interface TranscriptDiscoveryOptions {
   workspacePaths: string[];
@@ -37,26 +42,6 @@ function toTranscriptDirectory(workspacePath: string): string {
     return "";
   }
   return path.join(homedir(), ".cursor", "projects", workspaceId, "agent-transcripts");
-}
-
-function normalizeWorkspacePath(workspacePath: string): string {
-  const trimmed = workspacePath.trim();
-  if (trimmed.length === 0) {
-    return "";
-  }
-  const resolved = path.resolve(trimmed);
-  return stripTrailingSeparators(resolved);
-}
-
-function stripTrailingSeparators(value: string): string {
-  if (value === path.sep) {
-    return value;
-  }
-  return value.replace(new RegExp(`[${escapeForRegExp(path.sep)}]+$`), "");
-}
-
-function escapeForRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function collectTranscriptPaths(inputPaths: readonly string[]): DiscoveredTranscriptFile[] {
@@ -107,14 +92,6 @@ function collectJsonlFilesRecursive(directory: string): DiscoveredTranscriptFile
     });
 }
 
-function tryStatSync(filePath: string): Stats | undefined {
-  try {
-    return statSync(filePath);
-  } catch {
-    return undefined;
-  }
-}
-
 export function listTranscriptFileNames(options: TranscriptDiscoveryOptions): string[] {
   const directories = resolveTranscriptDirectories(options);
   const collected: string[] = [];
@@ -131,8 +108,4 @@ export function listTranscriptFileNames(options: TranscriptDiscoveryOptions): st
     }
   }
   return dedupePaths(collected).sort();
-}
-
-function dedupePaths(paths: readonly string[]): string[] {
-  return [...new Set(paths)];
 }

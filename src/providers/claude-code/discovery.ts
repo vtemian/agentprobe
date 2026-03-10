@@ -1,6 +1,11 @@
-import { readdirSync, statSync, type Stats } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import {
+  normalizeWorkspacePath,
+  tryStatSync,
+  dedupePaths,
+} from "@/providers/shared/discovery-utils";
 import { MAX_DISCOVERED_SESSION_FILES } from "./constants";
 
 const SESSION_FILE_EXTENSION = ".jsonl";
@@ -66,26 +71,6 @@ function toSessionDirectory(workspacePath: string, claudeHome: string): string {
   return directoryExists(projectDir) ? projectDir : "";
 }
 
-function normalizeWorkspacePath(workspacePath: string): string {
-  const trimmed = workspacePath.trim();
-  if (trimmed.length === 0) {
-    return "";
-  }
-  const resolved = path.resolve(trimmed);
-  return stripTrailingSeparators(resolved);
-}
-
-function stripTrailingSeparators(value: string): string {
-  if (value === path.sep) {
-    return value;
-  }
-  return value.replace(new RegExp(`[${escapeForRegExp(path.sep)}]+$`), "");
-}
-
-function escapeForRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function collectSessionPaths(inputDirectories: readonly string[]): DiscoveredSessionFile[] {
   const collected: DiscoveredSessionFile[] = [];
   for (const directory of inputDirectories) {
@@ -114,16 +99,4 @@ function directoryExists(dirPath: string): boolean {
   } catch {
     return false;
   }
-}
-
-function tryStatSync(filePath: string): Stats | undefined {
-  try {
-    return statSync(filePath);
-  } catch {
-    return undefined;
-  }
-}
-
-function dedupePaths(paths: readonly string[]): string[] {
-  return [...new Set(paths)];
 }
