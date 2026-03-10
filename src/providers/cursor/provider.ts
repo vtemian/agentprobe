@@ -20,13 +20,13 @@ import {
 import { createCursorWatch, type CursorWatchOptions } from "./watch";
 import { CURSOR_SOURCE_KIND } from "./constants";
 
-export interface CursorTranscriptProviderOptions {
+export interface CursorOptions {
   sourceLabel?: string;
   watch?: CursorWatchOptions | false;
 }
 
-export function createCursorTranscriptProvider(
-  options: CursorTranscriptProviderOptions = {},
+export function cursor(
+  options: CursorOptions = {},
 ): TranscriptProvider {
   const sourceLabel = options.sourceLabel ?? CURSOR_SOURCE_KIND;
   const watch = options.watch === false ? undefined : createCursorWatch(options.watch);

@@ -1,25 +1,25 @@
-import { createCursorTranscriptProvider, CURSOR_WATCH_DEBOUNCE_MS } from "@/providers/cursor";
+import { cursor, CURSOR_WATCH_DEBOUNCE_MS } from "@/providers/cursor";
 import { describe, expect, it } from "vitest";
 
 describe("cursor transcript provider", () => {
   it("includes watch by default", () => {
-    const provider = createCursorTranscriptProvider();
+    const provider = cursor();
     expect(provider.watch).toBeDefined();
     expect(provider.watch?.debounceMs).toBe(CURSOR_WATCH_DEBOUNCE_MS);
   });
 
   it("accepts custom watch debounce", () => {
-    const provider = createCursorTranscriptProvider({ watch: { debounceMs: 500 } });
+    const provider = cursor({ watch: { debounceMs: 500 } });
     expect(provider.watch?.debounceMs).toBe(500);
   });
 
   it("allows disabling watch with false", () => {
-    const provider = createCursorTranscriptProvider({ watch: false });
+    const provider = cursor({ watch: false });
     expect(provider.watch).toBeUndefined();
   });
 
   it("returns empty agents when payload has no agents array", async () => {
-    const provider = createCursorTranscriptProvider();
+    const provider = cursor();
 
     const snapshot = await provider.normalize(
       {
@@ -44,7 +44,7 @@ describe("cursor transcript provider", () => {
   });
 
   it("extracts agents from valid payload regardless of other field shapes", async () => {
-    const provider = createCursorTranscriptProvider();
+    const provider = cursor();
     const now = Date.now();
 
     const snapshot = await provider.normalize(

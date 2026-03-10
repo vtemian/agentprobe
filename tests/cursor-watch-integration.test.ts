@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { createObserver } from "@/index";
 import type { ObserverChangeEvent } from "@/core/observer";
-import { createCursorTranscriptProvider } from "@/providers/cursor";
+import { cursor } from "@/providers/cursor";
 import { afterEach, describe, expect, it } from "vitest";
 
 describe("cursor watch integration", () => {
@@ -37,7 +37,7 @@ describe("cursor watch integration", () => {
       updatedAt: Date.now(),
     });
 
-    const provider = createCursorTranscriptProvider({ watch: { debounceMs: 50 } });
+    const provider = cursor({ watch: { debounceMs: 50 } });
     const observer = createObserver({
       provider,
       workspacePaths: [workspacePath],
@@ -80,7 +80,7 @@ describe("cursor watch integration", () => {
       updatedAt: Date.now(),
     });
 
-    const provider = createCursorTranscriptProvider({ watch: false });
+    const provider = cursor({ watch: false });
     const observer = createObserver({
       provider,
       workspacePaths: [workspacePath],

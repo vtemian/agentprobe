@@ -4,7 +4,7 @@ import {
   type ObserverOptions,
   type TranscriptProvider,
 } from "./core";
-import { createCursorTranscriptProvider } from "./providers/cursor";
+import { cursor } from "./providers/cursor";
 
 export {
   createLifecycleMapper,
@@ -60,11 +60,11 @@ export {
 export {
   resolveTranscriptDirectories,
   resolveTranscriptSourcePaths,
-  createCursorTranscriptProvider,
+  cursor,
   createCursorTranscriptSource,
   createCursorWatch,
   CURSOR_WATCH_DEBOUNCE_MS,
-  type CursorTranscriptProviderOptions,
+  type CursorOptions,
   type CursorTranscriptSource,
   type CursorTranscriptSourceOptions,
   type TranscriptSourceResult,
@@ -80,6 +80,6 @@ export interface CreateObserverOptions extends Omit<ObserverOptions, "provider">
 export function createObserver(options: CreateObserverOptions): Observer {
   return createCoreObserver({
     ...options,
-    provider: options.provider ?? createCursorTranscriptProvider(),
+    provider: options.provider ?? cursor(),
   });
 }

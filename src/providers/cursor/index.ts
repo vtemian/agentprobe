@@ -4,8 +4,8 @@ export {
   type TranscriptDiscoveryOptions,
 } from "./discovery";
 export {
-  createCursorTranscriptProvider,
-  type CursorTranscriptProviderOptions,
+  cursor,
+  type CursorOptions,
 } from "./provider";
 export {
   createCursorTranscriptSource,

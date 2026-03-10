@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { createObserver, PROVIDER_KINDS, type TranscriptProvider } from "@/core";
 import type { ObserverChangeEvent } from "@/core/observer";
-import { createCursorTranscriptProvider } from "@/providers/cursor";
+import { cursor } from "@/providers/cursor";
 import { afterEach, describe, expect, it } from "vitest";
 
 describe("createObserver", () => {
@@ -91,7 +91,7 @@ describe("createObserver", () => {
     );
 
     const observer = createObserver({
-      provider: createCursorTranscriptProvider(),
+      provider: cursor(),
       workspacePaths: [workspacePath],
     });
 
