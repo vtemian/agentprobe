@@ -12,6 +12,9 @@ import {
   parseSessionRecord,
   parseAgentProgressData,
   type ClaudeCodeSessionRecord,
+  type UserRecord,
+  type AssistantRecord,
+  type ProgressRecord,
 } from "./schemas";
 import {
   CLAUDE_CODE_SOURCE_KIND,
@@ -318,8 +321,38 @@ function accumulateLines(
   }
 }
 
+function extractTextContent(
+  content: string | Array<{ type: string; text?: string }>,
+): string | undefined {
+  if (typeof content === "string") {
+    return content;
+  }
+  const joined = content
+    .filter((entry) => entry.type === "text" && typeof entry.text === "string")
+    .map((entry) => entry.text ?? "")
+    .join(" ");
+  return joined.length > 0 ? joined : undefined;
+}
+
 function accumulateRecord(state: SessionParseState, record: ClaudeCodeSessionRecord): void {
-  // Extract common base fields
+  accumulateBaseFields(state, record);
+
+  if (record.type === "user") {
+    accumulateUserRecord(state, record);
+    return;
+  }
+  if (record.type === "assistant") {
+    accumulateAssistantRecord(state, record);
+    return;
+  }
+  if (record.type === "progress") {
+    accumulateProgressRecord(state, record);
+    return;
+  }
+  state.latestRecordType = "system";
+}
+
+function accumulateBaseFields(state: SessionParseState, record: ClaudeCodeSessionRecord): void {
   if (!state.sessionId) {
     state.sessionId = record.sessionId;
   }
@@ -334,55 +367,38 @@ function accumulateRecord(state: SessionParseState, record: ClaudeCodeSessionRec
   if (!state.latestTimestamp || timestamp > state.latestTimestamp) {
     state.latestTimestamp = timestamp;
   }
+}
 
-  if (record.type === "user") {
-    state.messageCount += 1;
-    state.latestRecordType = "user";
-    const content = record.message.content;
-    if (typeof content === "string") {
-      state.latestUserContent = content;
-    } else {
-      const textParts = content
-        .filter((entry) => entry.type === "text" && typeof entry.text === "string")
-        .map((entry) => entry.text ?? "")
-        .join(" ");
-      if (textParts.length > 0) {
-        state.latestUserContent = textParts;
-      }
-    }
-    if ("permissionMode" in record && typeof record.permissionMode === "string") {
-      state.permissionMode = record.permissionMode;
-    }
-    return;
+function accumulateUserRecord(state: SessionParseState, record: UserRecord): void {
+  state.messageCount += 1;
+  state.latestRecordType = "user";
+  const extracted = extractTextContent(record.message.content);
+  if (extracted) {
+    state.latestUserContent = extracted;
   }
-
-  if (record.type === "assistant") {
-    state.messageCount += 1;
-    state.latestRecordType = "assistant";
-    if (record.message.model) {
-      state.model = record.message.model;
-    }
-    const hasToolUse = record.message.content.some((entry) => entry.type === "tool_use");
-    state.lastAssistantHadToolUse = hasToolUse;
-    if (hasToolUse) {
-      state.toolCallCount += record.message.content.filter(
-        (entry) => entry.type === "tool_use",
-      ).length;
-    }
-    return;
+  if ("permissionMode" in record && typeof record.permissionMode === "string") {
+    state.permissionMode = record.permissionMode;
   }
+}
 
-  if (record.type === "progress") {
-    state.latestRecordType = "progress";
-    const agentProgress = parseAgentProgressData(record.data);
-    if (agentProgress) {
-      accumulateSubagent(state, agentProgress.agentId, agentProgress.prompt, timestamp);
-    }
-    return;
+function accumulateAssistantRecord(state: SessionParseState, record: AssistantRecord): void {
+  state.messageCount += 1;
+  state.latestRecordType = "assistant";
+  if (record.message.model) {
+    state.model = record.message.model;
   }
+  const toolUseEntries = record.message.content.filter((entry) => entry.type === "tool_use");
+  state.lastAssistantHadToolUse = toolUseEntries.length > 0;
+  state.toolCallCount += toolUseEntries.length;
+}
 
-  // system records: update timestamp tracking but no special handling
-  state.latestRecordType = "system";
+function accumulateProgressRecord(state: SessionParseState, record: ProgressRecord): void {
+  state.latestRecordType = "progress";
+  const agentProgress = parseAgentProgressData(record.data);
+  if (agentProgress) {
+    const timestamp = new Date(record.timestamp).getTime();
+    accumulateSubagent(state, agentProgress.agentId, agentProgress.prompt, timestamp);
+  }
 }
 
 function accumulateSubagent(
