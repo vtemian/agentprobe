@@ -92,7 +92,7 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
     };
   }
 
-  function normalize(readResult: TranscriptReadResult): CanonicalSnapshot {
+  function normalize(readResult: TranscriptReadResult, _now: number): CanonicalSnapshot {
     const payload = readResult.records[0]?.payload;
     const agents: CanonicalAgentSnapshot[] = isTranscriptSourceResult(payload)
       ? payload.agents

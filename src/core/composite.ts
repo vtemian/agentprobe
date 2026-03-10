@@ -8,11 +8,6 @@ import type {
 import type { CanonicalAgentSnapshot } from "./model";
 
 export function createCompositeProvider(providers: TranscriptProvider[]): TranscriptProvider {
-  const providerById = new Map<string, TranscriptProvider>();
-  for (const provider of providers) {
-    providerById.set(provider.id, provider);
-  }
-
   async function discover(workspacePaths: string[]): Promise<DiscoveryResult> {
     const allInputs: DiscoveryInput[] = [];
     const allWatchPaths: string[] = [];
