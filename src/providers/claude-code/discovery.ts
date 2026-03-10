@@ -1,24 +1,18 @@
-import { readdirSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
   normalizeWorkspacePath,
-  tryStatSync,
   dedupePaths,
+  collectJsonlFiles,
+  type DiscoveredFile,
 } from "@/providers/shared/discovery-utils";
 import { MAX_DISCOVERED_SESSION_FILES } from "./constants";
-
-const SESSION_FILE_EXTENSION = ".jsonl";
 
 export interface SessionDiscoveryOptions {
   workspacePaths: string[];
   claudeHomePath?: string;
   maxFiles?: number;
-}
-
-interface DiscoveredSessionFile {
-  path: string;
-  mtimeMs: number;
 }
 
 export function encodeWorkspacePath(workspacePath: string): string {
@@ -45,20 +39,9 @@ export function resolveSessionSourcePaths(options: SessionDiscoveryOptions): str
 
 export function listSessionFileNames(options: SessionDiscoveryOptions): string[] {
   const directories = resolveSessionDirectories(options);
-  const collected: string[] = [];
-  for (const directory of directories) {
-    try {
-      const entries = readdirSync(directory, { encoding: "utf-8" });
-      for (const entry of entries) {
-        if (entry.endsWith(SESSION_FILE_EXTENSION)) {
-          collected.push(path.join(directory, entry));
-        }
-      }
-    } catch {
-      // Directory might not exist yet.
-    }
-  }
-  return dedupePaths(collected).sort();
+  return dedupePaths(
+    collectJsonlFiles(directories, { recursive: false }).map((f) => f.path),
+  ).sort();
 }
 
 function toSessionDirectory(workspacePath: string, claudeHome: string): string {
@@ -71,26 +54,8 @@ function toSessionDirectory(workspacePath: string, claudeHome: string): string {
   return directoryExists(projectDir) ? projectDir : "";
 }
 
-function collectSessionPaths(inputDirectories: readonly string[]): DiscoveredSessionFile[] {
-  const collected: DiscoveredSessionFile[] = [];
-  for (const directory of inputDirectories) {
-    try {
-      const entries = readdirSync(directory, { encoding: "utf-8" });
-      for (const entry of entries) {
-        if (!entry.endsWith(SESSION_FILE_EXTENSION)) {
-          continue;
-        }
-        const absolute = path.join(directory, entry);
-        const stats = tryStatSync(absolute);
-        if (stats?.isFile()) {
-          collected.push({ path: absolute, mtimeMs: Math.round(stats.mtimeMs) });
-        }
-      }
-    } catch {
-      // Directory might not exist.
-    }
-  }
-  return collected;
+function collectSessionPaths(inputDirectories: readonly string[]): DiscoveredFile[] {
+  return collectJsonlFiles(inputDirectories, { recursive: false });
 }
 
 function directoryExists(dirPath: string): boolean {

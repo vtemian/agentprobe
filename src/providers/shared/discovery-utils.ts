@@ -1,4 +1,4 @@
-import { statSync, type Stats } from "node:fs";
+import { readdirSync, statSync, type Stats } from "node:fs";
 import path from "node:path";
 
 export function normalizeWorkspacePath(workspacePath: string): string {
@@ -34,4 +34,48 @@ export function dedupePaths(paths: readonly string[]): string[] {
 
 export function formatLineWarning(sourcePath: string, lineNumber: number, reason: string): string {
   return `${sourcePath}:${lineNumber} ${reason}`;
+}
+
+// --- File collection ---
+
+export interface DiscoveredFile {
+  path: string;
+  mtimeMs: number;
+}
+
+export interface CollectFilesOptions {
+  recursive: boolean;
+  extension?: string;
+}
+
+export function collectJsonlFiles(
+  directories: readonly string[],
+  options: CollectFilesOptions = { recursive: false },
+): DiscoveredFile[] {
+  const extension = options.extension ?? ".jsonl";
+  const collected: DiscoveredFile[] = [];
+
+  for (const directory of directories) {
+    const entries = readDirectoryEntries(directory, options.recursive);
+    for (const relative of entries) {
+      if (!relative.endsWith(extension)) {
+        continue;
+      }
+      const absolute = path.join(directory, relative);
+      const stats = tryStatSync(absolute);
+      if (stats?.isFile()) {
+        collected.push({ path: absolute, mtimeMs: Math.round(stats.mtimeMs) });
+      }
+    }
+  }
+
+  return collected;
+}
+
+export function readDirectoryEntries(directory: string, recursive: boolean): string[] {
+  try {
+    return readdirSync(directory, { recursive, encoding: "utf-8" });
+  } catch {
+    return [];
+  }
 }

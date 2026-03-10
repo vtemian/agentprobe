@@ -5,6 +5,9 @@ export {
   tryStatSync,
   dedupePaths,
   formatLineWarning,
+  collectJsonlFiles,
+  type DiscoveredFile,
+  type CollectFilesOptions,
 } from "./discovery-utils";
 export {
   arraysEqual,
