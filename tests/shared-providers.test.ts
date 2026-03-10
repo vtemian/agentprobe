@@ -5,7 +5,7 @@ import {
   pruneStaleCache,
   isAgentPayload,
   groupByKey,
-} from "@/providers/shared/provider-utils";
+} from "@/providers/shared/providers";
 import type { CanonicalAgentSnapshot } from "@/core/model";
 
 describe("shared provider utils", () => {

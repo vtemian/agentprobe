@@ -1,4 +1,3 @@
-import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   CANONICAL_AGENT_KIND,
@@ -6,8 +5,14 @@ import {
   type CanonicalAgentSnapshot,
   type CanonicalAgentStatus,
 } from "@/core/model";
-import { formatLineWarning } from "@/providers/shared/discovery-utils";
-import { mergeAgents, pruneStaleCache } from "@/providers/shared/provider-utils";
+import { formatLineWarning } from "@/providers/shared/discovery";
+import {
+  type ProcessFileResult,
+  mergeAgents,
+  pruneStaleCache,
+  readSourceFile,
+  statSourceFile,
+} from "@/providers/shared/providers";
 import {
   parseSessionRecord,
   parseAgentProgressData,
@@ -21,8 +26,6 @@ import {
   CLAUDE_CODE_RUNNING_WINDOW_MS,
   CLAUDE_CODE_IDLE_WINDOW_MS,
 } from "./constants";
-
-// --- Types ---
 
 export interface ClaudeCodeTranscriptSourceResult {
   agents: CanonicalAgentSnapshot[];
@@ -42,8 +45,6 @@ export interface ClaudeCodeTranscriptSource {
   disconnect(): void;
   readSnapshot(now?: number): Promise<ClaudeCodeTranscriptSourceResult>;
 }
-
-// --- Parse state ---
 
 interface SubagentParseState {
   agentId: string;
@@ -77,8 +78,6 @@ interface SessionFileCache {
   state: SessionParseState;
   fileUpdatedAt: number;
 }
-
-// --- Factory ---
 
 export function createClaudeCodeTranscriptSource(
   options: ClaudeCodeTranscriptSourceOptions,
@@ -155,29 +154,6 @@ export function createClaudeCodeTranscriptSource(
   };
 }
 
-// --- Per-file processing ---
-
-interface FileStatResult {
-  fileUpdatedAt: number;
-  fileSizeBytes: number;
-}
-
-function statSourceFile(sourcePath: string, fallbackTimestamp: number): Promise<FileStatResult> {
-  return stat(sourcePath)
-    .then((stats) => ({
-      fileUpdatedAt: Math.round(stats.mtimeMs),
-      fileSizeBytes: stats.size,
-    }))
-    .catch(() => ({
-      fileUpdatedAt: fallbackTimestamp,
-      fileSizeBytes: 0,
-    }));
-}
-
-function readSourceFile(sourcePath: string): Promise<string | null> {
-  return readFile(sourcePath, "utf8").catch(() => null);
-}
-
 interface ParseStrategy {
   state: SessionParseState;
   startLine: number;
@@ -194,12 +170,6 @@ function resolveParseStrategy(
   return { state: createInitialParseState(), startLine: 0 };
 }
 
-interface ProcessFileResult {
-  agents: CanonicalAgentSnapshot[];
-  success: boolean;
-  warnings: string[];
-}
-
 async function processSourceFile(
   sourcePath: string,
   now: number,
@@ -210,7 +180,6 @@ async function processSourceFile(
 
   const cached = fileCache.get(sourcePath);
 
-  // Cache hit: mtime and size unchanged
   if (cached && cached.mtimeMs === fileUpdatedAt && cached.sizeBytes === fileSizeBytes) {
     return {
       agents: resolveAgentsFromState(cached.state, cached.fileUpdatedAt, now),
@@ -222,7 +191,6 @@ async function processSourceFile(
   const contentChanged = !cached || fileSizeBytes !== cached.sizeBytes;
   const effectiveUpdatedAt = contentChanged ? fileUpdatedAt : cached.fileUpdatedAt;
 
-  // Mtime changed but size identical: update mtime, reuse state
   if (cached && !contentChanged) {
     fileCache.set(sourcePath, { ...cached, mtimeMs: fileUpdatedAt });
     return {
@@ -232,7 +200,6 @@ async function processSourceFile(
     };
   }
 
-  // Content changed: read and parse
   const contents = await readSourceFile(sourcePath);
   if (contents === null) {
     warnings.push(`Failed to read session path: ${sourcePath}`);
@@ -258,8 +225,6 @@ async function processSourceFile(
     warnings,
   };
 }
-
-// --- Parse state management ---
 
 function createInitialParseState(): SessionParseState {
   return {
@@ -288,8 +253,6 @@ function cloneParseState(state: SessionParseState): SessionParseState {
   return { ...state, subagents: clonedSubagents };
 }
 
-// --- Line accumulator ---
-
 function accumulateLines(
   state: SessionParseState,
   lines: string[],
@@ -313,7 +276,6 @@ function accumulateLines(
 
     const record = parseSessionRecord(parsed);
     if (record === null) {
-      // Silently skip file-history-snapshot, queue-operation, and unknown records
       continue;
     }
 
@@ -422,8 +384,6 @@ function accumulateSubagent(
   }
 }
 
-// --- Agent resolution ---
-
 function resolveAgentsFromState(
   state: SessionParseState,
   fileUpdatedAt: number,
@@ -435,7 +395,6 @@ function resolveAgentsFromState(
 
   const agents: CanonicalAgentSnapshot[] = [];
 
-  // Parent agent
   const parentId = deriveAgentId(state.sessionId);
   const parentUpdatedAt = state.latestTimestamp ?? fileUpdatedAt;
   agents.push({
@@ -459,7 +418,6 @@ function resolveAgentsFromState(
     },
   });
 
-  // Subagents
   for (const [agentId, sub] of state.subagents) {
     const subId = `${state.sessionId}:${agentId}`;
     agents.push({
@@ -484,8 +442,6 @@ function resolveAgentsFromState(
   return agents;
 }
 
-// --- Status inference (conservative, time-window based) ---
-
 function deriveStatus(now: number, updatedAt: number): CanonicalAgentStatus {
   const ageMs = Math.max(0, now - updatedAt);
   if (ageMs <= CLAUDE_CODE_RUNNING_WINDOW_MS) {
@@ -497,10 +453,7 @@ function deriveStatus(now: number, updatedAt: number): CanonicalAgentStatus {
   return CANONICAL_AGENT_STATUS.completed;
 }
 
-// --- Helpers ---
-
 function deriveAgentId(sessionId: string): string {
-  // Use the session filename (without extension) as the ID
   return path.basename(sessionId, ".jsonl") || sessionId;
 }
 

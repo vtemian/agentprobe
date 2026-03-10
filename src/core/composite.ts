@@ -6,7 +6,7 @@ import type {
   TranscriptReadResult,
 } from "./providers";
 import type { CanonicalAgentSnapshot } from "./model";
-import { groupByKey } from "@/providers/shared/provider-utils";
+import { groupByKey } from "@/providers/shared/providers";
 
 export function createCompositeProvider(providers: TranscriptProvider[]): TranscriptProvider {
   async function discover(workspacePaths: string[]): Promise<DiscoveryResult> {
@@ -16,7 +16,6 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
 
     for (const provider of providers) {
       const result = await provider.discover(workspacePaths);
-      // Tag each input with its provider ID for routing during read
       for (const input of result.inputs) {
         allInputs.push({
           ...input,
@@ -50,11 +49,10 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
     inputs: DiscoveryInput[],
     now: number = Date.now(),
   ): Promise<TranscriptReadResult> {
-    // Group inputs by provider ID
-    const inputsByProvider = groupByKey(
-      inputs,
-      (input) => (input.metadata?.providerId as string) ?? "",
-    );
+    const inputsByProvider = groupByKey(inputs, (input) => {
+      const id = input.metadata?.providerId;
+      return typeof id === "string" ? id : "";
+    });
 
     const allRecords: TranscriptReadResult["records"] = [];
     const allWarnings: string[] = [];
@@ -90,7 +88,6 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
     readResult: TranscriptReadResult,
     now: number,
   ): Promise<CanonicalSnapshot> {
-    // Group records by provider
     const recordsByProvider = groupByKey(readResult.records, (record) => record.provider);
 
     const allAgents: CanonicalAgentSnapshot[] = [];
@@ -126,7 +123,6 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
     };
   }
 
-  // Build composite watch from all providers that have watch
   const watchProviders = providers.filter((p) => p.watch);
   const compositeWatch =
     watchProviders.length > 0

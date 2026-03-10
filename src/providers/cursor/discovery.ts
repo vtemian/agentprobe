@@ -6,7 +6,7 @@ import {
   dedupePaths,
   collectJsonlFiles,
   type DiscoveredFile,
-} from "@/providers/shared/discovery-utils";
+} from "@/providers/shared/discovery";
 
 export interface TranscriptDiscoveryOptions {
   workspacePaths: string[];

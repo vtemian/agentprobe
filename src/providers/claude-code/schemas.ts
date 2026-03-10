@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// --- Shared base for structured records (user, assistant, progress, system) ---
-
 const structuredRecordBaseSchema = z.object({
   parentUuid: z.string().nullable(),
   isSidechain: z.boolean(),
@@ -15,8 +13,6 @@ const structuredRecordBaseSchema = z.object({
   slug: z.string().optional(),
 });
 
-// --- Content entries in assistant messages ---
-
 const contentEntrySchema = z.object({
   type: z.string(),
   text: z.string().optional(),
@@ -27,8 +23,6 @@ const contentEntrySchema = z.object({
   signature: z.string().optional(),
 });
 
-// --- User record ---
-
 const userRecordSchema = structuredRecordBaseSchema.extend({
   type: z.literal("user"),
   message: z.object({
@@ -38,8 +32,6 @@ const userRecordSchema = structuredRecordBaseSchema.extend({
   permissionMode: z.string().optional(),
 });
 export type UserRecord = z.infer<typeof userRecordSchema>;
-
-// --- Assistant record ---
 
 const assistantRecordSchema = structuredRecordBaseSchema.extend({
   type: z.literal("assistant"),
@@ -52,8 +44,6 @@ const assistantRecordSchema = structuredRecordBaseSchema.extend({
   }),
 });
 export type AssistantRecord = z.infer<typeof assistantRecordSchema>;
-
-// --- Progress record ---
 
 const progressDataSchema = z
   .object({
@@ -69,8 +59,6 @@ const progressRecordSchema = structuredRecordBaseSchema.extend({
 });
 export type ProgressRecord = z.infer<typeof progressRecordSchema>;
 
-// --- Agent progress refinement (used to extract subagent data) ---
-
 const agentProgressDataSchema = z.object({
   type: z.literal("agent_progress"),
   agentId: z.string(),
@@ -84,15 +72,11 @@ export function parseAgentProgressData(data: unknown): AgentProgressData | null 
   return result.success ? result.data : null;
 }
 
-// --- System record ---
-
 const systemRecordSchema = structuredRecordBaseSchema.extend({
   type: z.literal("system"),
   subtype: z.string(),
 });
 export type SystemRecord = z.infer<typeof systemRecordSchema>;
-
-// --- Discriminated union of all structured records ---
 
 export type ClaudeCodeSessionRecord =
   | (UserRecord & { type: "user" })
@@ -100,25 +84,20 @@ export type ClaudeCodeSessionRecord =
   | (ProgressRecord & { type: "progress" })
   | (SystemRecord & { type: "system" });
 
-// --- Record type discriminator for skippable records ---
-
 const skippableTypeSchema = z.object({
   type: z.enum(["file-history-snapshot", "queue-operation"]),
 });
-
-// --- Public parse function ---
 
 export function parseSessionRecord(value: unknown): ClaudeCodeSessionRecord | null {
   if (typeof value !== "object" || value === null || !("type" in value)) {
     return null;
   }
 
-  // Skip known non-agent record types
   if (skippableTypeSchema.safeParse(value).success) {
     return null;
   }
 
-  const type = (value as Record<string, unknown>).type;
+  const { type } = value;
 
   if (type === "user") {
     const result = userRecordSchema.safeParse(value);

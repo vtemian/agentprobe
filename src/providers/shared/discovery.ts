@@ -36,8 +36,6 @@ export function formatLineWarning(sourcePath: string, lineNumber: number, reason
   return `${sourcePath}:${lineNumber} ${reason}`;
 }
 
-// --- File collection ---
-
 export interface DiscoveredFile {
   path: string;
   mtimeMs: number;
@@ -72,10 +70,14 @@ export function collectJsonlFiles(
   return collected;
 }
 
-export function readDirectoryEntries(directory: string, recursive: boolean): string[] {
+function readDirectoryEntries(directory: string, recursive: boolean): string[] {
   try {
     return readdirSync(directory, { recursive, encoding: "utf-8" });
   } catch {
     return [];
   }
+}
+
+export function directoryExists(dirPath: string): boolean {
+  return tryStatSync(dirPath)?.isDirectory() ?? false;
 }

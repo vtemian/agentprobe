@@ -1,4 +1,3 @@
-import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   CANONICAL_AGENT_KIND,
@@ -7,8 +6,14 @@ import {
   type CanonicalAgentSnapshot,
   type CanonicalAgentStatus,
 } from "@/core/model";
-import { formatLineWarning } from "@/providers/shared/discovery-utils";
-import { mergeAgents, pruneStaleCache } from "@/providers/shared/provider-utils";
+import { formatLineWarning } from "@/providers/shared/discovery";
+import {
+  type ProcessFileResult,
+  mergeAgents,
+  pruneStaleCache,
+  readSourceFile,
+  statSourceFile,
+} from "@/providers/shared/providers";
 import { z } from "zod";
 import {
   AGENT_COMPLETION_QUIET_WINDOW_MS,
@@ -185,29 +190,6 @@ export function createCursorTranscriptSource(
   };
 }
 
-// --- Per-file processing ---
-
-interface FileStatResult {
-  fileUpdatedAt: number;
-  fileSizeBytes: number;
-}
-
-function statSourceFile(sourcePath: string, fallbackTimestamp: number): Promise<FileStatResult> {
-  return stat(sourcePath)
-    .then((stats) => ({
-      fileUpdatedAt: Math.round(stats.mtimeMs),
-      fileSizeBytes: stats.size,
-    }))
-    .catch(() => ({
-      fileUpdatedAt: fallbackTimestamp,
-      fileSizeBytes: 0,
-    }));
-}
-
-function readSourceFile(sourcePath: string): Promise<string | null> {
-  return readFile(sourcePath, "utf8").catch(() => null);
-}
-
 interface ParseStrategy {
   state: TranscriptParseState;
   startLine: number;
@@ -224,12 +206,6 @@ function resolveParseStrategy(
   return { state: createInitialParseState(), startLine: 0 };
 }
 
-interface ProcessFileResult {
-  agents: CanonicalAgentSnapshot[];
-  success: boolean;
-  warnings: string[];
-}
-
 async function processSourceFile(
   sourcePath: string,
   now: number,
@@ -240,7 +216,6 @@ async function processSourceFile(
 
   const cached = fileCache.get(sourcePath);
 
-  // Cache hit: mtime unchanged
   if (cached && cached.mtimeMs === fileUpdatedAt) {
     return {
       agents: resolveAgentsFromState(cached.state, sourcePath, cached.fileUpdatedAt, now),
@@ -252,7 +227,6 @@ async function processSourceFile(
   const contentChanged = !cached || fileSizeBytes !== cached.sizeBytes;
   const effectiveUpdatedAt = contentChanged ? fileUpdatedAt : cached.fileUpdatedAt;
 
-  // Mtime changed but size identical: update mtime, reuse state
   if (cached && !contentChanged) {
     fileCache.set(sourcePath, { ...cached, mtimeMs: fileUpdatedAt });
     return {
@@ -262,7 +236,6 @@ async function processSourceFile(
     };
   }
 
-  // Content changed: read and parse
   const contents = await readSourceFile(sourcePath);
   if (contents === null) {
     warnings.push(`Failed to read transcript path: ${sourcePath}`);
@@ -289,8 +262,6 @@ async function processSourceFile(
   };
 }
 
-// --- Parse state management ---
-
 function createInitialParseState(): TranscriptParseState {
   return {
     latestUserTask: undefined,
@@ -306,8 +277,6 @@ function createInitialParseState(): TranscriptParseState {
 function cloneParseState(state: TranscriptParseState): TranscriptParseState {
   return { ...state, flatAgents: [...state.flatAgents] };
 }
-
-// --- Incremental line parser ---
 
 function accumulateLines(
   state: TranscriptParseState,
@@ -411,8 +380,6 @@ function accumulateFlatRecord(
   state.flatAgents.push(snapshot);
 }
 
-// --- Agent resolution ---
-
 function resolveAgentsFromState(
   state: TranscriptParseState,
   sourcePath: string,
@@ -444,8 +411,6 @@ function resolveAgentsFromState(
   ];
 }
 
-// --- Record parsing ---
-
 function parseFlatRecord(value: unknown): CursorTranscriptRecord | null {
   const parsed = flatTranscriptRecordSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
@@ -474,8 +439,6 @@ function parseConversationRecord(value: unknown): ConversationTranscriptRecord |
     .join("\n");
   return text.length > 0 ? { role, text } : { role };
 }
-
-// --- Text analysis ---
 
 function sanitizeTaskSummary(value: string): string {
   const match = value.match(/<user_query>\s*([\s\S]*?)\s*<\/user_query>/i);
@@ -532,8 +495,6 @@ function deriveConversationStatus(
   return CANONICAL_AGENT_STATUS.completed;
 }
 
-// --- Path helpers ---
-
 function deriveAgentId(sourcePath: string): string {
   const fileName = path.basename(sourcePath, ".jsonl");
   return fileName.length > 0 ? fileName : sourcePath;
@@ -551,8 +512,6 @@ function isSubagentPath(sourcePath: string): boolean {
 function isAssistantRole(role: string): boolean {
   return role === "assistant";
 }
-
-// --- Signal detection ---
 
 function deriveConversationSignal(value: string): ConversationSignal | undefined {
   const normalized = value.toLowerCase();

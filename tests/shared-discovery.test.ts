@@ -9,7 +9,7 @@ import {
   dedupePaths,
   formatLineWarning,
   collectJsonlFiles,
-} from "@/providers/shared/discovery-utils";
+} from "@/providers/shared/discovery";
 
 describe("shared discovery utils", () => {
   it("normalizeWorkspacePath resolves and strips trailing separators", () => {

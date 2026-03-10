@@ -1,12 +1,12 @@
-import { statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
   normalizeWorkspacePath,
   dedupePaths,
   collectJsonlFiles,
+  directoryExists,
   type DiscoveredFile,
-} from "@/providers/shared/discovery-utils";
+} from "@/providers/shared/discovery";
 import { MAX_DISCOVERED_SESSION_FILES } from "./constants";
 
 export interface SessionDiscoveryOptions {
@@ -56,12 +56,4 @@ function toSessionDirectory(workspacePath: string, claudeHome: string): string {
 
 function collectSessionPaths(inputDirectories: readonly string[]): DiscoveredFile[] {
   return collectJsonlFiles(inputDirectories, { recursive: false });
-}
-
-function directoryExists(dirPath: string): boolean {
-  try {
-    return statSync(dirPath).isDirectory();
-  } catch {
-    return false;
-  }
 }

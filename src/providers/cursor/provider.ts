@@ -1,13 +1,12 @@
 import {
   PROVIDER_KINDS,
-  type CanonicalAgentSnapshot,
   type CanonicalSnapshot,
   type DiscoveryInput,
   type DiscoveryResult,
   type TranscriptProvider,
   type TranscriptReadResult,
 } from "@/core";
-import { arraysEqual, isAgentPayload } from "@/providers/shared/provider-utils";
+import { arraysEqual, normalizeFromPayload } from "@/providers/shared/providers";
 import {
   listTranscriptFileNames,
   resolveTranscriptDirectories,
@@ -91,11 +90,7 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
   }
 
   function normalize(readResult: TranscriptReadResult, _now: number): CanonicalSnapshot {
-    const payload = readResult.records[0]?.payload;
-    const agents: CanonicalAgentSnapshot[] = isAgentPayload(payload)
-      ? (payload as { agents: CanonicalAgentSnapshot[] }).agents
-      : [];
-    return { agents, health: readResult.health };
+    return normalizeFromPayload(readResult);
   }
 
   return {
