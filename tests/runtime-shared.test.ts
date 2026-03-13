@@ -1,12 +1,13 @@
+import { describe, expect, it, vi } from "vitest";
+import { isWatchRuntimeError, WATCH_RUNTIME_ERROR_CODES } from "@/core/errors";
 import {
-  resolveWaiters,
-  rejectWaiters,
   createNotRunningError,
   createStoppedError,
   disconnectQuietly,
+  emitToListeners,
+  rejectWaiters,
+  resolveWaiters,
 } from "@/core/runtime/shared";
-import { isWatchRuntimeError, WATCH_RUNTIME_ERROR_CODES } from "@/core/errors";
-import { describe, expect, it, vi } from "vitest";
 
 describe("resolveWaiters", () => {
   it("resolves every waiter with the given snapshot", () => {
@@ -97,5 +98,29 @@ describe("disconnectQuietly", () => {
 
   it("handles sources without a disconnect method", async () => {
     await expect(disconnectQuietly({})).resolves.toBeUndefined();
+  });
+});
+
+describe("emitToListeners", () => {
+  it("calls every listener with the event", () => {
+    const received: string[] = [];
+    const listeners = new Set<(event: string) => void>([
+      (e) => received.push(`a:${e}`),
+      (e) => received.push(`b:${e}`),
+    ]);
+    emitToListeners(listeners, "hello");
+    expect(received).toEqual(["a:hello", "b:hello"]);
+  });
+
+  it("continues calling listeners when one throws", () => {
+    const received: string[] = [];
+    const listeners = new Set<(event: string) => void>([
+      () => {
+        throw new Error("boom");
+      },
+      (e) => received.push(e),
+    ]);
+    emitToListeners(listeners, "hello");
+    expect(received).toEqual(["hello"]);
   });
 });

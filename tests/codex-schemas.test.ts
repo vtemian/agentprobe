@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSessionMeta, parseCodexRecord } from "@/providers/codex/schemas";
+import { parseCodexRecord, parseSessionMeta } from "@/providers/codex/schemas";
 
 describe("codex schemas", () => {
   describe("parseSessionMeta", () => {

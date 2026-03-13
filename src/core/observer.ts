@@ -1,5 +1,3 @@
-import { createWatchRuntime } from "./runtime/index";
-import { WATCH_LIFECYCLE_KIND, WATCH_RUNTIME_EVENT_TYPES, type WatchSource } from "./types";
 import {
   CANONICAL_AGENT_STATUS,
   type CanonicalAgentSnapshot,
@@ -11,7 +9,10 @@ import type {
   TranscriptProvider,
   TranscriptReadResult,
 } from "./providers";
+import { createWatchRuntime } from "./runtime/index";
+import { emitToListeners } from "./runtime/shared";
 import type { WatchHealth, WatchLifecycleEvent } from "./types";
+import { WATCH_LIFECYCLE_KIND, WATCH_RUNTIME_EVENT_TYPES, type WatchSource } from "./types";
 
 export interface ObserverSnapshot {
   at: number;
@@ -83,40 +84,40 @@ export function createObserver(options: ObserverOptions): Observer {
       : undefined,
   });
 
+  function handleSnapshotEvent(event: {
+    at: number;
+    snapshot: { agents: CanonicalAgentSnapshot[]; health: WatchHealth };
+  }): void {
+    previousSnapshot = latestSnapshot;
+    latestSnapshot = {
+      at: event.at,
+      agents: event.snapshot.agents,
+      health: event.snapshot.health,
+    };
+  }
+
+  function handleLifecycleEvents(events: WatchLifecycleEvent<CanonicalAgentStatus>[]): void {
+    if (!latestSnapshot) {
+      return;
+    }
+    const currentById = indexAgentsById(latestSnapshot.agents);
+    const previousById = indexAgentsById(previousSnapshot?.agents ?? []);
+    for (const change of events) {
+      const agent = resolveAgentForChange(change, currentById, previousById);
+      if (agent) {
+        emit({ change, agent, snapshot: latestSnapshot });
+      }
+    }
+  }
+
   runtime.subscribe((event) => {
     if (event.type === WATCH_RUNTIME_EVENT_TYPES.snapshot) {
-      previousSnapshot = latestSnapshot;
-      latestSnapshot = {
-        at: event.at,
-        agents: event.snapshot.agents,
-        health: event.snapshot.health,
-      };
+      handleSnapshotEvent(event);
       return;
     }
 
     if (event.type === WATCH_RUNTIME_EVENT_TYPES.lifecycle) {
-      if (!latestSnapshot) {
-        return;
-      }
-      const currentById = indexAgentsById(latestSnapshot.agents);
-      const previousById = indexAgentsById(previousSnapshot?.agents ?? []);
-      for (const change of event.events) {
-        if (change.kind === WATCH_LIFECYCLE_KIND.heartbeat) {
-          continue;
-        }
-        const agent = currentById.get(change.agentId) ?? previousById.get(change.agentId);
-        if (!agent) {
-          continue;
-        }
-        if (
-          change.kind === WATCH_LIFECYCLE_KIND.joined &&
-          (agent.status === CANONICAL_AGENT_STATUS.completed ||
-            agent.status === CANONICAL_AGENT_STATUS.error)
-        ) {
-          continue;
-        }
-        emit({ change, agent, snapshot: latestSnapshot });
-      }
+      handleLifecycleEvents(event.events);
       return;
     }
   });
@@ -137,13 +138,7 @@ export function createObserver(options: ObserverOptions): Observer {
   }
 
   function emit(event: ObserverChangeEvent): void {
-    for (const listener of listeners) {
-      try {
-        listener(event);
-      } catch {
-        // Keep observer fan-out resilient to listener failures.
-      }
-    }
+    emitToListeners(listeners, event);
   }
 
   async function stop(): Promise<void> {
@@ -184,4 +179,30 @@ function mergeSnapshotWarnings(
 
 function indexAgentsById(agents: CanonicalAgentSnapshot[]): Map<string, CanonicalAgentSnapshot> {
   return new Map(agents.map((agent) => [agent.id, agent]));
+}
+
+function isStaleJoinEvent(
+  change: WatchLifecycleEvent<CanonicalAgentStatus>,
+  agent: CanonicalAgentSnapshot,
+): boolean {
+  return (
+    change.kind === WATCH_LIFECYCLE_KIND.joined &&
+    (agent.status === CANONICAL_AGENT_STATUS.completed ||
+      agent.status === CANONICAL_AGENT_STATUS.error)
+  );
+}
+
+function resolveAgentForChange(
+  change: WatchLifecycleEvent<CanonicalAgentStatus>,
+  currentById: Map<string, CanonicalAgentSnapshot>,
+  previousById: Map<string, CanonicalAgentSnapshot>,
+): CanonicalAgentSnapshot | undefined {
+  if (change.kind === WATCH_LIFECYCLE_KIND.heartbeat) {
+    return undefined;
+  }
+  const agent = currentById.get(change.agentId) ?? previousById.get(change.agentId);
+  if (!agent || isStaleJoinEvent(change, agent)) {
+    return undefined;
+  }
+  return agent;
 }

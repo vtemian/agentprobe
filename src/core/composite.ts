@@ -1,3 +1,5 @@
+import { toError } from "./errors";
+import type { CanonicalAgentSnapshot } from "./model";
 import type {
   CanonicalSnapshot,
   DiscoveryInput,
@@ -5,7 +7,8 @@ import type {
   TranscriptProvider,
   TranscriptReadResult,
 } from "./providers";
-import type { CanonicalAgentSnapshot } from "./model";
+
+const DEFAULT_WATCH_DEBOUNCE_MS = 150;
 
 function groupByKey<T>(items: readonly T[], keyFn: (item: T) => string): Map<string, T[]> {
   const map = new Map<string, T[]>();
@@ -59,7 +62,7 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
       }
     }
     if (firstError) {
-      throw firstError;
+      throw toError(firstError);
     }
   }
 
@@ -145,7 +148,9 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
   const compositeWatch =
     watchProviders.length > 0
       ? {
-          debounceMs: Math.min(...watchProviders.map((p) => p.watch?.debounceMs ?? 150)),
+          debounceMs: Math.min(
+            ...watchProviders.map((p) => p.watch?.debounceMs ?? DEFAULT_WATCH_DEBOUNCE_MS),
+          ),
           subscribe(
             watchPath: string,
             onEvent: () => void,

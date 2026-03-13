@@ -1,11 +1,11 @@
-import { mkdirSync, rmSync, writeFileSync, utimesSync } from "node:fs";
+import { mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  encodeWorkspacePath,
+  listSessionFileNames,
   resolveSessionDirectories,
   resolveSessionSourcePaths,
-  listSessionFileNames,
-  encodeWorkspacePath,
 } from "@/providers/claude-code/discovery";
 
 describe("claude-code discovery", () => {

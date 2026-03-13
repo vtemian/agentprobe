@@ -1,10 +1,10 @@
-import {
-  toError,
-  WatchRuntimeError,
-  isWatchRuntimeError,
-  WATCH_RUNTIME_ERROR_CODES,
-} from "@/core/errors";
 import { describe, expect, it } from "vitest";
+import {
+  isWatchRuntimeError,
+  toError,
+  WATCH_RUNTIME_ERROR_CODES,
+  WatchRuntimeError,
+} from "@/core/errors";
 
 describe("toError", () => {
   it("returns the same instance when given an Error", () => {

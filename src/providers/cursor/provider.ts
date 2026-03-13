@@ -1,20 +1,20 @@
 import {
-  PROVIDER_KINDS,
   type CanonicalSnapshot,
   type DiscoveryInput,
   type DiscoveryResult,
+  PROVIDER_KINDS,
   type TranscriptProvider,
   type TranscriptReadResult,
 } from "@/core";
 import { arraysEqual, normalizeFromPayload } from "@/providers/shared/providers";
+import { CURSOR_SOURCE_KIND } from "./constants";
 import {
   listTranscriptFileNames,
   resolveTranscriptDirectories,
   resolveTranscriptSourcePaths,
 } from "./discovery";
-import { createCursorTranscriptSource, type CursorTranscriptSource } from "./transcripts";
-import { createCursorWatch, type CursorWatchOptions } from "./watch";
-import { CURSOR_SOURCE_KIND } from "./constants";
+import { type CursorTranscriptSource, createCursorTranscriptSource } from "./transcripts";
+import { type CursorWatchOptions, createCursorWatch } from "./watch";
 
 export interface CursorOptions {
   sourceLabel?: string;
@@ -58,12 +58,12 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
 
   function connect(): void {
     connected = true;
-    source?.connect();
+    void source?.connect();
   }
 
   function disconnect(): void {
     connected = false;
-    source?.disconnect();
+    void source?.disconnect();
     cachedDiscovery = undefined;
     cachedFileList = undefined;
     cachedWorkspacePaths = undefined;
@@ -78,7 +78,7 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
     source = ensureSource(source, sourcePaths, sourceLabel, sourcePathKey, nextSourcePathKey);
     sourcePathKey = nextSourcePathKey;
     if (connected) {
-      source.connect();
+      void source.connect();
     }
     const snapshot = await source.readSnapshot(now);
     return {

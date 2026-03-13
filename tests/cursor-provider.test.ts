@@ -1,5 +1,5 @@
-import { cursor, CURSOR_WATCH_DEBOUNCE_MS } from "@/providers/cursor";
 import { describe, expect, it } from "vitest";
+import { CURSOR_WATCH_DEBOUNCE_MS, cursor } from "@/providers/cursor";
 
 describe("cursor transcript provider", () => {
   it("includes watch by default", () => {
@@ -36,6 +36,50 @@ describe("cursor transcript provider", () => {
           sourceLabel: "cursor-transcripts",
           warnings: [],
         },
+      },
+      Date.now(),
+    );
+
+    expect(snapshot.agents).toHaveLength(0);
+  });
+
+  it("returns empty agents when payload is null", async () => {
+    const provider = cursor();
+    const health = { connected: true, sourceLabel: "cursor-transcripts", warnings: [] };
+
+    const snapshot = await provider.normalize(
+      {
+        records: [
+          {
+            provider: "cursor",
+            inputUri: "cursor://transcripts",
+            observedAt: Date.now(),
+            payload: null,
+          },
+        ],
+        health,
+      },
+      Date.now(),
+    );
+
+    expect(snapshot.agents).toHaveLength(0);
+  });
+
+  it("returns empty agents when payload is missing agents field", async () => {
+    const provider = cursor();
+    const health = { connected: true, sourceLabel: "cursor-transcripts", warnings: [] };
+
+    const snapshot = await provider.normalize(
+      {
+        records: [
+          {
+            provider: "cursor",
+            inputUri: "cursor://transcripts",
+            observedAt: Date.now(),
+            payload: { notAgents: [] },
+          },
+        ],
+        health,
       },
       Date.now(),
     );

@@ -1,8 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { codex } from "@/providers/codex/provider";
 import { PROVIDER_KINDS } from "@/core/providers";
+import { codex } from "@/providers/codex/provider";
 
 describe("codex provider", () => {
   const cleanupPaths: string[] = [];

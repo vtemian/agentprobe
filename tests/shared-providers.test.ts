@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { CanonicalAgentSnapshot } from "@/core/model";
 import {
   arraysEqual,
+  isAgentPayload,
   mergeAgents,
   pruneStaleCache,
-  isAgentPayload,
 } from "@/providers/shared/providers";
-import type { CanonicalAgentSnapshot } from "@/core/model";
 
 describe("shared provider utils", () => {
   it("arraysEqual returns true for identical arrays", () => {

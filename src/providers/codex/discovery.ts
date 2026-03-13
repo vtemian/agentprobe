@@ -3,9 +3,9 @@ import { homedir } from "node:os";
 import path from "node:path";
 import {
   collectJsonlFiles,
+  dedupePaths,
   directoryExists,
   normalizeWorkspacePath,
-  dedupePaths,
 } from "@/providers/shared/discovery";
 import { MAX_DISCOVERED_SESSION_FILES } from "./constants";
 
@@ -40,12 +40,13 @@ function parseSessionHeader(filePath: string, mtimeMs: number): SessionHeader | 
   }
 
   try {
-    const record = JSON.parse(line);
+    const record = JSON.parse(line) as Record<string, unknown>;
     if (record.type !== "session_meta") {
       return undefined;
     }
-    const cwd = record.payload?.cwd;
-    const sessionId = record.payload?.id ?? "";
+    const payload = record.payload as Record<string, unknown> | undefined;
+    const cwd = payload?.cwd;
+    const sessionId = (payload?.id as string) ?? "";
     if (typeof cwd !== "string" || cwd.length === 0) {
       return undefined;
     }

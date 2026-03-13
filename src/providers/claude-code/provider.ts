@@ -1,20 +1,20 @@
 import {
-  PROVIDER_KINDS,
   type CanonicalSnapshot,
   type DiscoveryInput,
   type DiscoveryResult,
+  PROVIDER_KINDS,
   type TranscriptProvider,
   type TranscriptReadResult,
 } from "@/core";
 import { arraysEqual, normalizeFromPayload } from "@/providers/shared/providers";
+import { CLAUDE_CODE_SOURCE_KIND } from "./constants";
 import {
   listSessionFileNames,
   resolveSessionDirectories,
   resolveSessionSourcePaths,
 } from "./discovery";
-import { createClaudeCodeTranscriptSource, type ClaudeCodeTranscriptSource } from "./transcripts";
-import { createClaudeCodeWatch, type ClaudeCodeWatchOptions } from "./watch";
-import { CLAUDE_CODE_SOURCE_KIND } from "./constants";
+import { type ClaudeCodeTranscriptSource, createClaudeCodeTranscriptSource } from "./transcripts";
+import { type ClaudeCodeWatchOptions, createClaudeCodeWatch } from "./watch";
 
 export interface ClaudeCodeOptions {
   claudeHomePath?: string;

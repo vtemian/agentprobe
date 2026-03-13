@@ -5,18 +5,17 @@ export {
   type TranscriptDiscoveryOptions,
 } from "./discovery";
 export {
-  cursor,
   type CursorOptions,
+  cursor,
 } from "./provider";
-export {
-  createCursorTranscriptSource,
-  type CursorTranscriptSource,
-  type CursorTranscriptSourceOptions,
-  type CursorTranscriptSourceResult,
+export type {
+  CursorTranscriptSource,
+  CursorTranscriptSourceOptions,
+  CursorTranscriptSourceResult,
 } from "./transcripts";
 export {
-  createCursorWatch,
   CURSOR_WATCH_DEBOUNCE_MS,
   type CursorWatch,
   type CursorWatchOptions,
+  createCursorWatch,
 } from "./watch";

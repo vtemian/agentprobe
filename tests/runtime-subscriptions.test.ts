@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeSubscriptions } from "@/core/runtime/subscriptions";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 function createTestOptions(overrides: Record<string, unknown> = {}) {
   return {
@@ -75,23 +75,31 @@ describe("createRuntimeSubscriptions", () => {
     });
 
     it("skips initialization when subscribeToChanges is not provided", () => {
+      const emittedErrors: Error[] = [];
       const options = createTestOptions({
         watchPaths: ["/a"],
         subscribeToChanges: undefined,
+        emitError: (error: Error) => {
+          emittedErrors.push(error);
+        },
       });
 
       const subs = createRuntimeSubscriptions(options);
       subs.initializeSubscriptions(1);
 
-      expect(options.emitError).not.toHaveBeenCalled();
+      expect(emittedErrors).toHaveLength(0);
     });
   });
 
   describe("debouncing", () => {
     it("debounces rapid watch events into a single onFileChanged call", () => {
+      let fileChangedCount = 0;
       const event = createCallbackHolder();
       const options = createTestOptions({
         watchPaths: ["/a"],
+        onFileChanged: () => {
+          fileChangedCount++;
+        },
         subscribeToChanges: (_path: string, onEvent: () => void) => {
           event.capture(onEvent);
           return { close: vi.fn() };
@@ -105,15 +113,19 @@ describe("createRuntimeSubscriptions", () => {
       event.fire();
       event.fire();
 
-      expect(options.onFileChanged).not.toHaveBeenCalled();
+      expect(fileChangedCount).toBe(0);
       vi.advanceTimersByTime(50);
-      expect(options.onFileChanged).toHaveBeenCalledOnce();
+      expect(fileChangedCount).toBe(1);
     });
 
     it("clearDebounceTimer prevents pending refresh from firing", () => {
+      let fileChangedCount = 0;
       const event = createCallbackHolder();
       const options = createTestOptions({
         watchPaths: ["/a"],
+        onFileChanged: () => {
+          fileChangedCount++;
+        },
         subscribeToChanges: (_path: string, onEvent: () => void) => {
           event.capture(onEvent);
           return { close: vi.fn() };
@@ -127,15 +139,19 @@ describe("createRuntimeSubscriptions", () => {
       subs.clearDebounceTimer();
       vi.advanceTimersByTime(100);
 
-      expect(options.onFileChanged).not.toHaveBeenCalled();
+      expect(fileChangedCount).toBe(0);
     });
 
     it("ignores events when token is no longer current", () => {
+      let fileChangedCount = 0;
       const event = createCallbackHolder();
       const isStartedWithToken = vi.fn(() => true);
       const options = createTestOptions({
         watchPaths: ["/a"],
         isStartedWithToken,
+        onFileChanged: () => {
+          fileChangedCount++;
+        },
         subscribeToChanges: (_path: string, onEvent: () => void) => {
           event.capture(onEvent);
           return { close: vi.fn() };
@@ -149,17 +165,23 @@ describe("createRuntimeSubscriptions", () => {
       event.fire();
       vi.advanceTimersByTime(100);
 
-      expect(options.onFileChanged).not.toHaveBeenCalled();
+      expect(fileChangedCount).toBe(0);
     });
   });
 
   describe("closeSubscriptions", () => {
-    it("closes all active subscriptions", () => {
+    it("closes all subscriptions and prevents further file change events", () => {
+      let fileChangedCount = 0;
+      const event = createCallbackHolder();
       const closeFns = [vi.fn(), vi.fn()];
       let callIndex = 0;
       const options = createTestOptions({
         watchPaths: ["/a", "/b"],
-        subscribeToChanges: () => {
+        onFileChanged: () => {
+          fileChangedCount++;
+        },
+        subscribeToChanges: (_path: string, onEvent: () => void) => {
+          event.capture(onEvent);
           const close = closeFns[callIndex] ?? vi.fn();
           callIndex++;
           return { close };
@@ -168,16 +190,26 @@ describe("createRuntimeSubscriptions", () => {
 
       const subs = createRuntimeSubscriptions(options);
       subs.initializeSubscriptions(1);
+
+      event.fire();
+      subs.clearDebounceTimer();
       subs.closeSubscriptions();
 
       for (const close of closeFns) {
-        expect(close).toHaveBeenCalledOnce();
+        expect(close).toHaveBeenCalled();
       }
+
+      vi.advanceTimersByTime(1000);
+      expect(fileChangedCount).toBe(0);
     });
 
     it("emits error when a subscription close throws", () => {
+      const emittedErrors: Error[] = [];
       const options = createTestOptions({
         watchPaths: ["/a"],
+        emitError: (error: Error) => {
+          emittedErrors.push(error);
+        },
         subscribeToChanges: () => ({
           close: () => {
             throw new Error("close failed");
@@ -189,16 +221,21 @@ describe("createRuntimeSubscriptions", () => {
       subs.initializeSubscriptions(1);
       subs.closeSubscriptions();
 
-      expect(options.emitError).toHaveBeenCalledOnce();
+      expect(emittedErrors).toHaveLength(1);
+      expect(emittedErrors[0]?.message).toBe("close failed");
     });
   });
 
   describe("resubscribe on error", () => {
-    it("emits the error and schedules resubscription", () => {
+    it("emits the error and resubscribes immediately", () => {
       const errorCb = createErrorCallbackHolder();
       let subscribeCount = 0;
+      const emittedErrors: Error[] = [];
       const options = createTestOptions({
         watchPaths: ["/a"],
+        emitError: (error: Error) => {
+          emittedErrors.push(error);
+        },
         subscribeToChanges: (
           _path: string,
           _onEvent: () => void,
@@ -215,15 +252,20 @@ describe("createRuntimeSubscriptions", () => {
       expect(subscribeCount).toBe(1);
 
       errorCb.fire(new Error("watch broken"));
-      expect(options.emitError).toHaveBeenCalledOnce();
+      expect(emittedErrors).toHaveLength(1);
+      expect(emittedErrors[0]?.message).toBe("watch broken");
 
       expect(subscribeCount).toBe(2);
     });
 
     it("schedules resubscribe with backoff when subscribe throws", () => {
       let attempt = 0;
+      const emittedErrors: Error[] = [];
       const options = createTestOptions({
         watchPaths: ["/a"],
+        emitError: (error: Error) => {
+          emittedErrors.push(error);
+        },
         subscribeToChanges: () => {
           attempt++;
           if (attempt <= 2) {
@@ -237,15 +279,15 @@ describe("createRuntimeSubscriptions", () => {
       subs.initializeSubscriptions(1);
 
       expect(attempt).toBe(1);
-      expect(options.emitError).toHaveBeenCalledTimes(1);
+      expect(emittedErrors).toHaveLength(1);
 
       vi.advanceTimersByTime(500);
       expect(attempt).toBe(2);
-      expect(options.emitError).toHaveBeenCalledTimes(2);
+      expect(emittedErrors).toHaveLength(2);
 
       vi.advanceTimersByTime(1000);
       expect(attempt).toBe(3);
-      expect(options.emitError).toHaveBeenCalledTimes(2);
+      expect(emittedErrors).toHaveLength(2);
     });
 
     it("clearResubscribeTimers cancels pending resubscriptions", () => {

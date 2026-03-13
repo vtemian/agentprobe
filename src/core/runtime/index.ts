@@ -1,26 +1,27 @@
-import { createLifecycleMapper } from "@/core/lifecycle";
 import { toError } from "@/core/errors";
-import {
-  DEFAULT_CHECK_IDLE_DELAY_MS,
-  DEFAULT_DEBOUNCE_MS,
-  type RuntimeState,
-  type RuntimeStatus,
-  WATCH_RUNTIME_INTERNAL_STATES,
-  createNotRunningError,
-  createStoppedError,
-  disconnectQuietly,
-  rejectWaiters,
-  resolveWaiters,
-} from "./shared";
-import { createRuntimeSubscriptions } from "./subscriptions";
-import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "./event-bus";
+import { createLifecycleMapper } from "@/core/lifecycle";
 import type {
   WatchRuntime,
   WatchRuntimeEvent,
   WatchRuntimeOptions,
   WatchSnapshot,
 } from "@/core/types";
-import { WATCH_RUNTIME_EVENT_TYPES, WATCH_LIFECYCLE_KIND } from "@/core/types";
+import { WATCH_LIFECYCLE_KIND, WATCH_RUNTIME_EVENT_TYPES } from "@/core/types";
+import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "./event-bus";
+import {
+  createNotRunningError,
+  createStoppedError,
+  DEFAULT_CHECK_IDLE_DELAY_MS,
+  DEFAULT_DEBOUNCE_MS,
+  disconnectQuietly,
+  emitToListeners,
+  type RuntimeState,
+  type RuntimeStatus,
+  rejectWaiters,
+  resolveWaiters,
+  WATCH_RUNTIME_INTERNAL_STATES,
+} from "./shared";
+import { createRuntimeSubscriptions } from "./subscriptions";
 
 type RuntimeBusEvent =
   | { type: typeof RUNTIME_BUS_EVENT_TYPES.fileChanged }
@@ -209,14 +210,9 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
     },
   });
 
-  const {
-    initializeSubscriptions,
-    clearDebounceTimer,
-    closeSubscriptions,
-    clearResubscribeTimers,
-  } = createRuntimeSubscriptions({
+  const subs = createRuntimeSubscriptions({
     watchPaths: options.watchPaths,
-    getWatchPaths: source.getWatchPaths,
+    getWatchPaths: () => source.getWatchPaths?.() ?? [],
     subscribeToChanges,
     debounceMs,
     onFileChanged: () => {
@@ -241,15 +237,15 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
         return;
       }
 
-      initializeSubscriptions(token);
+      subs.initializeSubscriptions(token);
       runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.started;
       emitStateEvent(WATCH_RUNTIME_INTERNAL_STATES.started);
       bus.dispatch({ type: RUNTIME_BUS_EVENT_TYPES.fileChanged }, token);
     } catch (error) {
       if (isTokenCurrent(token)) {
         runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopped;
-        clearDebounceTimer();
-        closeSubscriptions();
+        subs.clearDebounceTimer();
+        subs.closeSubscriptions();
         lifecycle.reset();
         rejectAllQueuedWaiters(error);
       }
@@ -312,10 +308,10 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
     runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopping;
     const token = nextLifecycleToken();
-    clearDebounceTimer();
+    subs.clearDebounceTimer();
     clearIdleTimer();
-    closeSubscriptions();
-    clearResubscribeTimers();
+    subs.closeSubscriptions();
+    subs.clearResubscribeTimers();
     bus.clear();
     lifecycle.reset();
 
@@ -365,13 +361,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function emit(event: WatchRuntimeEvent<TAgent, TStatus>): void {
-    for (const listener of listeners) {
-      try {
-        listener(event);
-      } catch {
-        // Keep runtime loop healthy even if consumer listeners throw.
-      }
-    }
+    emitToListeners(listeners, event);
   }
 
   return {

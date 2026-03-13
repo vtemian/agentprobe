@@ -2,13 +2,13 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  collectJsonlFiles,
+  dedupePaths,
+  escapeForRegExp,
+  formatLineWarning,
   normalizeWorkspacePath,
   stripTrailingSeparators,
-  escapeForRegExp,
   tryStatSync,
-  dedupePaths,
-  formatLineWarning,
-  collectJsonlFiles,
 } from "@/providers/shared/discovery";
 
 describe("shared discovery utils", () => {

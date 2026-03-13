@@ -1,4 +1,4 @@
-import { readdirSync, statSync, type Stats } from "node:fs";
+import { readdirSync, type Stats, statSync } from "node:fs";
 import path from "node:path";
 
 export function normalizeWorkspacePath(workspacePath: string): string {

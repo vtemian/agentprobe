@@ -186,7 +186,9 @@ export function createRuntimeSubscriptions(options: RuntimeSubscriptionsOptions)
       try {
         subscription?.close();
       } catch {
-        // Recovery path should remain best-effort.
+        // Subscription close can throw if the underlying watcher was already destroyed.
+        // During cleanup we only care that we tried — surfacing this error would mask
+        // the real issue that triggered the cleanup.
       }
     }
   }

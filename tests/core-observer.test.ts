@@ -1,10 +1,10 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { createObserver, PROVIDER_KINDS, type TranscriptProvider } from "@/core";
 import type { ObserverChangeEvent } from "@/core/observer";
 import { cursor } from "@/providers/cursor";
-import { afterEach, describe, expect, it } from "vitest";
 
 describe("createObserver", () => {
   const cleanupPaths: string[] = [];

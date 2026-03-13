@@ -1,11 +1,11 @@
 import { homedir } from "node:os";
 import path from "node:path";
 import {
-  normalizeWorkspacePath,
-  tryStatSync,
-  dedupePaths,
   collectJsonlFiles,
   type DiscoveredFile,
+  dedupePaths,
+  normalizeWorkspacePath,
+  tryStatSync,
 } from "@/providers/shared/discovery";
 import { MAX_DISCOVERED_TRANSCRIPT_FILES } from "./constants";
 

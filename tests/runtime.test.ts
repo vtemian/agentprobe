@@ -1,11 +1,11 @@
+import { describe, expect, it, vi } from "vitest";
 import {
   createWatchRuntime,
+  isWatchRuntimeError,
   WATCH_RUNTIME_EVENT_TYPES,
   WATCH_RUNTIME_STATES,
-  isWatchRuntimeError,
 } from "@/core/index";
 import type { WatchRuntimeEvent, WatchSnapshot, WatchSource } from "@/core/types";
-import { describe, expect, it, vi } from "vitest";
 
 type TestAgent = { id: string; status: "running" | "idle" };
 type TestStatus = "running" | "idle";

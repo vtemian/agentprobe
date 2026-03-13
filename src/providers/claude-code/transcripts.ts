@@ -7,25 +7,26 @@ import {
 } from "@/core/model";
 import { formatLineWarning } from "@/providers/shared/discovery";
 import {
-  type ProcessFileResult,
   mergeAgents,
+  type ProcessFileResult,
   pruneStaleCache,
   readSourceFile,
   statSourceFile,
 } from "@/providers/shared/providers";
 import {
-  parseSessionRecord,
-  parseAgentProgressData,
-  type ClaudeCodeSessionRecord,
-  type UserRecord,
-  type AssistantRecord,
-  type ProgressRecord,
-} from "./schemas";
-import {
-  CLAUDE_CODE_SOURCE_KIND,
-  CLAUDE_CODE_RUNNING_WINDOW_MS,
+  AGENT_NAME_PREFIX_LENGTH,
   CLAUDE_CODE_IDLE_WINDOW_MS,
+  CLAUDE_CODE_RUNNING_WINDOW_MS,
+  CLAUDE_CODE_SOURCE_KIND,
 } from "./constants";
+import {
+  type AssistantRecord,
+  type ClaudeCodeSessionRecord,
+  type ProgressRecord,
+  parseAgentProgressData,
+  parseSessionRecord,
+  type UserRecord,
+} from "./schemas";
 
 export interface ClaudeCodeTranscriptSourceResult {
   agents: CanonicalAgentSnapshot[];
@@ -459,5 +460,5 @@ function deriveAgentId(sessionId: string): string {
 
 function deriveAgentName(id: string, isSubagent: boolean): string {
   const prefix = isSubagent ? "Subagent" : "Session";
-  return `${prefix} ${id.slice(0, 6)}`;
+  return `${prefix} ${id.slice(0, AGENT_NAME_PREFIX_LENGTH)}`;
 }

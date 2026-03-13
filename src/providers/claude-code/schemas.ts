@@ -88,6 +88,13 @@ const skippableTypeSchema = z.object({
   type: z.enum(["file-history-snapshot", "queue-operation"]),
 });
 
+const recordSchemaByType: Record<string, z.ZodType<ClaudeCodeSessionRecord>> = {
+  user: userRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
+  assistant: assistantRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
+  progress: progressRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
+  system: systemRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
+};
+
 export function parseSessionRecord(value: unknown): ClaudeCodeSessionRecord | null {
   if (typeof value !== "object" || value === null || !("type" in value)) {
     return null;
@@ -97,24 +104,11 @@ export function parseSessionRecord(value: unknown): ClaudeCodeSessionRecord | nu
     return null;
   }
 
-  const { type } = value;
-
-  if (type === "user") {
-    const result = userRecordSchema.safeParse(value);
-    return result.success ? result.data : null;
-  }
-  if (type === "assistant") {
-    const result = assistantRecordSchema.safeParse(value);
-    return result.success ? result.data : null;
-  }
-  if (type === "progress") {
-    const result = progressRecordSchema.safeParse(value);
-    return result.success ? result.data : null;
-  }
-  if (type === "system") {
-    const result = systemRecordSchema.safeParse(value);
-    return result.success ? result.data : null;
+  const schema = recordSchemaByType[value.type as string];
+  if (!schema) {
+    return null;
   }
 
-  return null;
+  const result = schema.safeParse(value);
+  return result.success ? result.data : null;
 }

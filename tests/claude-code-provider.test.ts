@@ -1,8 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { claudeCode } from "@/providers/claude-code/provider";
 import { PROVIDER_KINDS } from "@/core/providers";
+import { claudeCode } from "@/providers/claude-code/provider";
 
 describe("claude-code provider", () => {
   const cleanupPaths: string[] = [];

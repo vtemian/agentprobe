@@ -43,7 +43,8 @@ export function createEventBus<TEvent extends { type: string }>(
       try {
         await handler(event);
       } catch {
-        // Handler errors must not crash the bus.
+        // Handler errors must not crash the bus — a failing handler would block all
+        // subsequent events in the queue, causing the runtime to silently stop responding.
       }
     }
 

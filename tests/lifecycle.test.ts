@@ -1,7 +1,35 @@
-import { createLifecycleMapper, WATCH_LIFECYCLE_KIND } from "@/core/index";
 import { describe, expect, it } from "vitest";
+import { createLifecycleMapper, WATCH_LIFECYCLE_KIND } from "@/core/index";
 
 describe("createLifecycleMapper", () => {
+  it("reset clears previous status tracking so agents re-emit joined", () => {
+    const mapper = createLifecycleMapper<{ id: string; status: string }, string>({
+      getId: (agent) => agent.id,
+      getStatus: (agent) => agent.status,
+    });
+
+    // First call — agent joins
+    const firstEvents = mapper.map([{ id: "a", status: "running" }], 10);
+    expect(firstEvents).toEqual([
+      expect.objectContaining({ kind: WATCH_LIFECYCLE_KIND.joined, agentId: "a" }),
+    ]);
+
+    // Second call — same agent, heartbeat only
+    const secondEvents = mapper.map([{ id: "a", status: "running" }], 20);
+    expect(secondEvents).toEqual([
+      expect.objectContaining({ kind: WATCH_LIFECYCLE_KIND.heartbeat }),
+    ]);
+
+    // Reset — clears tracking
+    mapper.reset();
+
+    // Third call — agent "joins" again because tracking was cleared
+    const thirdEvents = mapper.map([{ id: "a", status: "running" }], 30);
+    expect(thirdEvents).toEqual([
+      expect.objectContaining({ kind: WATCH_LIFECYCLE_KIND.joined, agentId: "a" }),
+    ]);
+  });
+
   it("emits joined, statusChanged, heartbeat, and left events", () => {
     const mapper = createLifecycleMapper<{ id: string; status: string }, string>({
       getId: (agent) => agent.id,

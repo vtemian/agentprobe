@@ -1,20 +1,20 @@
 import {
-  PROVIDER_KINDS,
   type CanonicalSnapshot,
   type DiscoveryInput,
   type DiscoveryResult,
+  PROVIDER_KINDS,
   type TranscriptProvider,
   type TranscriptReadResult,
 } from "@/core";
 import { arraysEqual, normalizeFromPayload } from "@/providers/shared/providers";
+import { CODEX_SOURCE_KIND } from "./constants";
 import {
   listSessionFileNames,
   resolveSessionSourcePaths,
   resolveSessionsDirectory,
 } from "./discovery";
-import { createCodexTranscriptSource, type CodexTranscriptSource } from "./transcripts";
-import { createCodexWatch, type CodexWatchOptions } from "./watch";
-import { CODEX_SOURCE_KIND } from "./constants";
+import { type CodexTranscriptSource, createCodexTranscriptSource } from "./transcripts";
+import { type CodexWatchOptions, createCodexWatch } from "./watch";
 
 export interface CodexOptions {
   codexHomePath?: string;

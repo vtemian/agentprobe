@@ -1,4 +1,5 @@
 import path from "node:path";
+import { z } from "zod";
 import {
   CANONICAL_AGENT_KIND,
   CANONICAL_AGENT_STATUS,
@@ -8,15 +9,15 @@ import {
 } from "@/core/model";
 import { formatLineWarning } from "@/providers/shared/discovery";
 import {
-  type ProcessFileResult,
   mergeAgents,
+  type ProcessFileResult,
   pruneStaleCache,
   readSourceFile,
   statSourceFile,
 } from "@/providers/shared/providers";
-import { z } from "zod";
 import {
   AGENT_COMPLETION_QUIET_WINDOW_MS,
+  AGENT_NAME_PREFIX_LENGTH,
   CURSOR_IDLE_WINDOW_MS,
   CURSOR_RUNNING_WINDOW_MS,
   CURSOR_SOURCE_KIND,
@@ -445,6 +446,17 @@ function hasErrorMarker(value: string): boolean {
   return /(error|failed|exception|traceback)/i.test(value);
 }
 
+function statusAfterAssistantReply(ageMs: number): CanonicalAgentStatus {
+  if (ageMs <= STREAMING_QUIET_WINDOW_MS) return CANONICAL_AGENT_STATUS.running;
+  if (ageMs <= AGENT_COMPLETION_QUIET_WINDOW_MS) return CANONICAL_AGENT_STATUS.idle;
+  return CANONICAL_AGENT_STATUS.completed;
+}
+
+function statusWhileAwaitingAssistant(ageMs: number): CanonicalAgentStatus {
+  if (ageMs <= CURSOR_IDLE_WINDOW_MS) return CANONICAL_AGENT_STATUS.idle;
+  return CANONICAL_AGENT_STATUS.completed;
+}
+
 function deriveConversationStatus(
   now: number,
   updatedAt: number,
@@ -452,12 +464,8 @@ function deriveConversationStatus(
   latestRole: string | undefined,
   hasAssistantReplyAfterLatestUser: boolean,
 ): CanonicalAgentStatus {
-  if (latestSignal === "error") {
-    return CANONICAL_AGENT_STATUS.error;
-  }
-  if (latestSignal === "completed") {
-    return CANONICAL_AGENT_STATUS.completed;
-  }
+  if (latestSignal === "error") return CANONICAL_AGENT_STATUS.error;
+  if (latestSignal === "completed") return CANONICAL_AGENT_STATUS.completed;
 
   const ageMs = Math.max(0, now - updatedAt);
   const assistantDone =
@@ -465,28 +473,12 @@ function deriveConversationStatus(
     isAssistantRole(latestRole ?? "") &&
     latestSignal !== "active";
 
-  if (assistantDone) {
-    if (ageMs <= STREAMING_QUIET_WINDOW_MS) {
-      return CANONICAL_AGENT_STATUS.running;
-    }
-    if (ageMs <= AGENT_COMPLETION_QUIET_WINDOW_MS) {
-      return CANONICAL_AGENT_STATUS.idle;
-    }
-    return CANONICAL_AGENT_STATUS.completed;
-  }
-
-  if (ageMs <= CURSOR_RUNNING_WINDOW_MS) {
-    return CANONICAL_AGENT_STATUS.running;
-  }
+  if (assistantDone) return statusAfterAssistantReply(ageMs);
+  if (ageMs <= CURSOR_RUNNING_WINDOW_MS) return CANONICAL_AGENT_STATUS.running;
   if (latestSignal === "active" && !hasAssistantReplyAfterLatestUser) {
-    if (ageMs <= CURSOR_IDLE_WINDOW_MS) {
-      return CANONICAL_AGENT_STATUS.idle;
-    }
-    return CANONICAL_AGENT_STATUS.completed;
+    return statusWhileAwaitingAssistant(ageMs);
   }
-  if (ageMs <= CURSOR_IDLE_WINDOW_MS) {
-    return CANONICAL_AGENT_STATUS.idle;
-  }
+  if (ageMs <= CURSOR_IDLE_WINDOW_MS) return CANONICAL_AGENT_STATUS.idle;
   return CANONICAL_AGENT_STATUS.completed;
 }
 
@@ -497,7 +489,7 @@ function deriveAgentId(sourcePath: string): string {
 
 function deriveAgentName(agentId: string, sourcePath: string): string {
   const prefix = isSubagentPath(sourcePath) ? "Subagent" : "Agent";
-  return `${prefix} ${agentId.slice(0, 6)}`;
+  return `${prefix} ${agentId.slice(0, AGENT_NAME_PREFIX_LENGTH)}`;
 }
 
 function isSubagentPath(sourcePath: string): boolean {

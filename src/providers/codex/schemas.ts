@@ -96,31 +96,25 @@ export type EventMsg = z.infer<typeof eventMsgSchema>;
 
 export type CodexRecord = SessionMeta | ResponseItem | TurnContext | EventMsg;
 
+const codexRecordSchemaByType: Record<string, z.ZodType<CodexRecord>> = {
+  session_meta: sessionMetaSchema as z.ZodType<CodexRecord>,
+  response_item: responseItemSchema as z.ZodType<CodexRecord>,
+  turn_context: turnContextSchema as z.ZodType<CodexRecord>,
+  event_msg: eventMsgSchema as z.ZodType<CodexRecord>,
+};
+
 export function parseCodexRecord(value: unknown): CodexRecord | null {
   if (typeof value !== "object" || value === null || !("type" in value)) {
     return null;
   }
 
-  const { type } = value;
-
-  if (type === "session_meta") {
-    const result = sessionMetaSchema.safeParse(value);
-    return result.success ? result.data : null;
-  }
-  if (type === "response_item") {
-    const result = responseItemSchema.safeParse(value);
-    return result.success ? result.data : null;
-  }
-  if (type === "turn_context") {
-    const result = turnContextSchema.safeParse(value);
-    return result.success ? result.data : null;
-  }
-  if (type === "event_msg") {
-    const result = eventMsgSchema.safeParse(value);
-    return result.success ? result.data : null;
+  const schema = codexRecordSchemaByType[value.type as string];
+  if (!schema) {
+    return null;
   }
 
-  return null;
+  const result = schema.safeParse(value);
+  return result.success ? result.data : null;
 }
 
 export function parseSessionMeta(value: unknown): SessionMeta["payload"] | null {

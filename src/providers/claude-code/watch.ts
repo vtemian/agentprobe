@@ -1,4 +1,4 @@
-import { watch as fsWatch, type FSWatcher } from "node:fs";
+import { type FSWatcher, watch as fsWatch } from "node:fs";
 import { toError } from "@/core/errors";
 import { CLAUDE_CODE_WATCH_DEBOUNCE_MS } from "./constants";
 

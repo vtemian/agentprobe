@@ -1,6 +1,6 @@
+import { readFile, stat } from "node:fs/promises";
 import type { CanonicalAgentSnapshot } from "@/core/model";
 import type { CanonicalSnapshot, TranscriptReadResult } from "@/core/providers";
-import { readFile, stat } from "node:fs/promises";
 
 export function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) {

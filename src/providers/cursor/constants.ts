@@ -7,3 +7,6 @@ export const CURSOR_WATCH_DEBOUNCE_MS = 150;
 export const MAX_DISCOVERED_TRANSCRIPT_FILES = 400;
 
 export const CURSOR_SOURCE_KIND = "cursor-transcripts";
+export const TRANSCRIPT_FILE_EXTENSION = ".jsonl";
+export const SUBAGENT_PATH_SEGMENT = "/subagents/";
+export const AGENT_NAME_PREFIX_LENGTH = 6;

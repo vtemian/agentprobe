@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { createCursorTranscriptSource } from "@/providers/cursor/transcripts";
 import { afterEach, describe, expect, it } from "vitest";
+import { createCursorTranscriptSource } from "@/providers/cursor/transcripts";
 
 describe("cursor transcripts", () => {
   const cleanupPaths: string[] = [];
@@ -52,7 +52,7 @@ describe("cursor transcripts", () => {
     );
 
     const source = createCursorTranscriptSource({ sourcePaths: [oldPath, newPath] });
-    source.connect();
+    void source.connect();
     const snapshot = await source.readSnapshot();
 
     expect(snapshot.agents).toHaveLength(1);
@@ -88,7 +88,7 @@ describe("cursor transcripts", () => {
     );
 
     const source = createCursorTranscriptSource({ sourcePaths: [transcriptPath] });
-    source.connect();
+    void source.connect();
     const snapshot = await source.readSnapshot(Date.now() + 300_000);
 
     expect(snapshot.agents).toHaveLength(1);
@@ -111,7 +111,7 @@ describe("cursor transcripts", () => {
     );
 
     const source = createCursorTranscriptSource({ sourcePaths: [transcriptPath] });
-    source.connect();
+    void source.connect();
     const snapshot = await source.readSnapshot();
 
     expect(snapshot.agents).toHaveLength(1);
@@ -143,7 +143,7 @@ describe("cursor transcripts", () => {
     );
 
     const source = createCursorTranscriptSource({ sourcePaths: [transcriptPath] });
-    source.connect();
+    void source.connect();
     const snapshot = await source.readSnapshot(Date.now() + 1_000);
 
     expect(snapshot.agents).toHaveLength(1);
@@ -157,7 +157,7 @@ describe("cursor transcripts", () => {
     writeFileSync(transcriptPath, `${JSON.stringify({ foo: "bar", unknown: true })}\n`, "utf8");
 
     const source = createCursorTranscriptSource({ sourcePaths: [transcriptPath] });
-    source.connect();
+    void source.connect();
     const snapshot = await source.readSnapshot();
 
     expect(snapshot.agents).toHaveLength(0);

@@ -1,5 +1,20 @@
 export { createCompositeProvider } from "./composite";
+export {
+  isWatchRuntimeError,
+  toError,
+  WATCH_RUNTIME_ERROR_CODES,
+  WATCH_RUNTIME_ERROR_MESSAGES,
+  WatchRuntimeError,
+  type WatchRuntimeErrorCode,
+} from "./errors";
 export { createLifecycleMapper } from "./lifecycle";
+export {
+  CANONICAL_AGENT_KIND,
+  CANONICAL_AGENT_STATUS,
+  type CanonicalAgentKind,
+  type CanonicalAgentSnapshot,
+  type CanonicalAgentStatus,
+} from "./model";
 export {
   createObserver,
   type Observer,
@@ -8,46 +23,31 @@ export {
   type ObserverSnapshot,
 } from "./observer";
 export {
-  toError,
-  isWatchRuntimeError,
-  WatchRuntimeError,
-  WATCH_RUNTIME_ERROR_CODES,
-  WATCH_RUNTIME_ERROR_MESSAGES,
-  type WatchRuntimeErrorCode,
-} from "./errors";
-export { createWatchRuntime } from "./runtime/index";
-export {
-  CANONICAL_AGENT_STATUS,
-  CANONICAL_AGENT_KIND,
-  type CanonicalAgentStatus,
-  type CanonicalAgentKind,
-  type CanonicalAgentSnapshot,
-} from "./model";
-export {
-  PROVIDER_KINDS,
-  type ProviderKind,
+  type CanonicalSnapshot,
   type DiscoveryInput,
   type DiscoveryResult,
+  PROVIDER_KINDS,
+  type ProviderKind,
   type RawTranscriptRecord,
-  type TranscriptReadResult,
-  type CanonicalSnapshot,
   type TranscriptProvider,
+  type TranscriptReadResult,
 } from "./providers";
+export { createWatchRuntime } from "./runtime/index";
 export {
+  type LifecycleSnapshot,
   WATCH_LIFECYCLE_KIND,
   WATCH_RUNTIME_EVENT_TYPES,
   WATCH_RUNTIME_STATES,
   type WatchHealth,
-  type WatchSnapshot,
-  type WatchSource,
-  type WatchLifecycleKind,
   type WatchLifecycleEvent,
-  type LifecycleSnapshot,
-  type WatchRuntimeOptions,
-  type WatchRuntimeSnapshotEvent,
-  type WatchRuntimeLifecycleEvent,
-  type WatchRuntimeStateEvent,
+  type WatchLifecycleKind,
+  type WatchRuntime,
   type WatchRuntimeErrorEvent,
   type WatchRuntimeEvent,
-  type WatchRuntime,
+  type WatchRuntimeLifecycleEvent,
+  type WatchRuntimeOptions,
+  type WatchRuntimeSnapshotEvent,
+  type WatchRuntimeStateEvent,
+  type WatchSnapshot,
+  type WatchSource,
 } from "./types";

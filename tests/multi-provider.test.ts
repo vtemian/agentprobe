@@ -1,8 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { createObserver } from "@/index";
 import { afterEach, describe, expect, it } from "vitest";
+import { createObserver } from "@/index";
 
 describe("multi-provider createObserver", () => {
   const cleanupPaths: string[] = [];

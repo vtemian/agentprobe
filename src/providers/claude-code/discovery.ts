@@ -1,11 +1,11 @@
 import { homedir } from "node:os";
 import path from "node:path";
 import {
-  normalizeWorkspacePath,
-  dedupePaths,
   collectJsonlFiles,
-  directoryExists,
   type DiscoveredFile,
+  dedupePaths,
+  directoryExists,
+  normalizeWorkspacePath,
 } from "@/providers/shared/discovery";
 import { MAX_DISCOVERED_SESSION_FILES } from "./constants";
 

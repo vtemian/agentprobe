@@ -23,7 +23,7 @@ export interface DiscoveryResult {
 }
 
 export interface RawTranscriptRecord {
-  provider: ProviderKind | string;
+  provider: string;
   inputUri: string;
   observedAt: number;
   payload: unknown;
@@ -38,7 +38,7 @@ export interface TranscriptReadResult {
 export type CanonicalSnapshot = WatchSnapshot<CanonicalAgentSnapshot>;
 
 export interface TranscriptProvider {
-  id: ProviderKind | string;
+  id: string;
   discover(workspacePaths: string[]): Promise<DiscoveryResult> | DiscoveryResult;
   connect?(): Promise<void> | void;
   disconnect?(): Promise<void> | void;

@@ -1,5 +1,5 @@
-import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "@/core/runtime/event-bus";
 import { describe, expect, it, vi } from "vitest";
+import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "@/core/runtime/event-bus";
 
 type TestEvent = { type: string; id?: string };
 
@@ -40,20 +40,25 @@ describe("createEventBus", () => {
     expect(order).toEqual(["start-1", "end-1", "start-2", "end-2", "start-3", "end-3"]);
   });
 
-  it("drops events with stale tokens", async () => {
-    const handler = vi.fn<() => void>();
-    let token = 1;
+  it("drops events dispatched with a token that no longer matches getToken()", async () => {
+    let currentToken = 1;
+    const handledEvents: string[] = [];
+
     const bus = createEventBus<TestEvent>({
-      handlers: { a: handler },
-      getToken: () => token,
+      handlers: {
+        a: (event) => {
+          handledEvents.push(event.type);
+        },
+      },
+      getToken: () => currentToken,
     });
 
-    bus.dispatch({ type: "a" }, 1);
-    token = 2;
-    bus.dispatch({ type: "a" }, 1);
+    bus.dispatch({ type: "a" }, 1); // token matches
+    currentToken = 2; // token changes
+    bus.dispatch({ type: "a" }, 1); // stale token — should be dropped
 
-    await waitUntil(() => handler.mock.calls.length >= 1, 200);
-    expect(handler).toHaveBeenCalledTimes(1);
+    await waitUntil(() => handledEvents.length >= 1, 200);
+    expect(handledEvents).toEqual(["a"]);
   });
 
   it("handlers can dispatch new events that are queued after current handler", async () => {
@@ -61,11 +66,11 @@ describe("createEventBus", () => {
     const token = 1;
     const bus = createEventBus<TestEvent>({
       handlers: {
-        a: async (e) => {
+        a: (e) => {
           order.push(`a-${e.id}`);
           bus.dispatch({ type: "b", id: "from-a" }, token);
         },
-        b: async (e) => {
+        b: (e) => {
           order.push(`b-${e.id}`);
         },
       },

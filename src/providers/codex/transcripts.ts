@@ -7,20 +7,25 @@ import {
 } from "@/core/model";
 import { formatLineWarning } from "@/providers/shared/discovery";
 import {
-  type ProcessFileResult,
   mergeAgents,
+  type ProcessFileResult,
   pruneStaleCache,
   readSourceFile,
   statSourceFile,
 } from "@/providers/shared/providers";
 import {
-  parseCodexRecord,
+  AGENT_NAME_PREFIX_LENGTH,
+  CODEX_IDLE_WINDOW_MS,
+  CODEX_RUNNING_WINDOW_MS,
+  CODEX_SOURCE_KIND,
+} from "./constants";
+import {
   type CodexRecord,
-  type SessionMeta,
+  parseCodexRecord,
   type ResponseItem,
+  type SessionMeta,
   type TurnContext,
 } from "./schemas";
-import { CODEX_SOURCE_KIND, CODEX_RUNNING_WINDOW_MS, CODEX_IDLE_WINDOW_MS } from "./constants";
 
 export interface CodexTranscriptSourceResult {
   agents: CanonicalAgentSnapshot[];
@@ -392,5 +397,5 @@ function deriveAgentId(sessionId: string): string {
 }
 
 function deriveAgentName(id: string): string {
-  return `Codex ${id.slice(0, 6)}`;
+  return `Codex ${id.slice(0, AGENT_NAME_PREFIX_LENGTH)}`;
 }

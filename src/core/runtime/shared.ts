@@ -1,9 +1,9 @@
-import type { WatchSnapshot } from "@/core/types";
 import {
   WATCH_RUNTIME_ERROR_CODES,
   WATCH_RUNTIME_ERROR_MESSAGES,
   WatchRuntimeError,
 } from "@/core/errors";
+import type { WatchSnapshot } from "@/core/types";
 
 export const DEFAULT_DEBOUNCE_MS = 150;
 export const DEFAULT_CHECK_IDLE_DELAY_MS = 2_000;
@@ -61,6 +61,19 @@ export function createStoppedError(): Error {
     WATCH_RUNTIME_ERROR_CODES.stoppedBeforeRefreshCompleted,
     WATCH_RUNTIME_ERROR_MESSAGES.stoppedBeforeRefreshCompleted,
   );
+}
+
+export function emitToListeners<TEvent>(
+  listeners: Set<(event: TEvent) => void>,
+  event: TEvent,
+): void {
+  for (const listener of listeners) {
+    try {
+      listener(event);
+    } catch {
+      // Keep event fan-out resilient to listener failures.
+    }
+  }
 }
 
 export async function disconnectQuietly(source: {

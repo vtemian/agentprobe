@@ -70,11 +70,14 @@
     "clean": "rm -rf dist coverage",
     "dev": "tsup --watch",
     "format": "biome format --write .",
-    "lint": "biome lint .",
+    "lint": "biome lint . && eslint .",
+    "lint:biome": "biome lint .",
+    "lint:eslint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "check": "biome check . && npm run typecheck && npm run test"
+    "check": "biome check . && eslint . && npm run typecheck && npm run test",
+    "prepare": "husky"
   },
   "keywords": [
     "watch",
@@ -90,9 +93,16 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.3.5",
+    "eslint": "^10.0.3",
+    "eslint-plugin-sonarjs": "^4.0.2",
+    "eslint-plugin-unicorn": "^63.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.3",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.57.0",
     "vitest": "^4.0.18"
   }
 }
