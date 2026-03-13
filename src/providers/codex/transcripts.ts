@@ -9,6 +9,7 @@ import { formatLineWarning } from "@/providers/shared/discovery";
 import {
   mergeAgents,
   type ProcessFileResult,
+  parseTimestampMs,
   pruneStaleCache,
   readSourceFile,
   statSourceFile,
@@ -268,7 +269,10 @@ function accumulateLines(
 }
 
 function accumulateRecord(state: SessionParseState, record: CodexRecord): void {
-  const timestamp = new Date(record.timestamp).getTime();
+  const timestamp = parseTimestampMs(record.timestamp);
+  if (timestamp === undefined) {
+    return;
+  }
   if (!state.firstTimestamp || timestamp < state.firstTimestamp) {
     state.firstTimestamp = timestamp;
   }

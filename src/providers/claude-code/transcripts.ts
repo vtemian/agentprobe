@@ -9,6 +9,7 @@ import { formatLineWarning } from "@/providers/shared/discovery";
 import {
   mergeAgents,
   type ProcessFileResult,
+  parseTimestampMs,
   pruneStaleCache,
   readSourceFile,
   statSourceFile,
@@ -298,7 +299,9 @@ function extractTextContent(
 }
 
 function accumulateRecord(state: SessionParseState, record: ClaudeCodeSessionRecord): void {
-  accumulateBaseFields(state, record);
+  if (!accumulateBaseFields(state, record)) {
+    return;
+  }
 
   if (record.type === "user") {
     accumulateUserRecord(state, record);
@@ -315,7 +318,7 @@ function accumulateRecord(state: SessionParseState, record: ClaudeCodeSessionRec
   state.latestRecordType = "system";
 }
 
-function accumulateBaseFields(state: SessionParseState, record: ClaudeCodeSessionRecord): void {
+function accumulateBaseFields(state: SessionParseState, record: ClaudeCodeSessionRecord): boolean {
   if (!state.sessionId) {
     state.sessionId = record.sessionId;
   }
@@ -323,13 +326,17 @@ function accumulateBaseFields(state: SessionParseState, record: ClaudeCodeSessio
   state.cwd = record.cwd;
   state.version = record.version;
 
-  const timestamp = new Date(record.timestamp).getTime();
+  const timestamp = parseTimestampMs(record.timestamp);
+  if (timestamp === undefined) {
+    return false;
+  }
   if (!state.firstTimestamp || timestamp < state.firstTimestamp) {
     state.firstTimestamp = timestamp;
   }
   if (!state.latestTimestamp || timestamp > state.latestTimestamp) {
     state.latestTimestamp = timestamp;
   }
+  return true;
 }
 
 function accumulateUserRecord(state: SessionParseState, record: UserRecord): void {
@@ -359,8 +366,10 @@ function accumulateProgressRecord(state: SessionParseState, record: ProgressReco
   state.latestRecordType = "progress";
   const agentProgress = parseAgentProgressData(record.data);
   if (agentProgress) {
-    const timestamp = new Date(record.timestamp).getTime();
-    accumulateSubagent(state, agentProgress.agentId, agentProgress.prompt, timestamp);
+    const timestamp = parseTimestampMs(record.timestamp);
+    if (timestamp !== undefined) {
+      accumulateSubagent(state, agentProgress.agentId, agentProgress.prompt, timestamp);
+    }
   }
 }
 

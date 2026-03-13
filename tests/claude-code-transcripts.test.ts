@@ -331,6 +331,67 @@ describe("claude-code transcripts", () => {
     );
   });
 
+  it("skips records with invalid timestamps without corrupting agent snapshots", async () => {
+    const dir = createTempDir("bad-timestamp");
+    const filePath = writeSession(dir, "sess-bad-ts.jsonl", [
+      {
+        ...baseFields,
+        sessionId: "sess-bad-ts",
+        type: "user",
+        uuid: "u1",
+        timestamp: "2026-03-10T07:00:00.000Z",
+        message: { role: "user", content: "explore the code" },
+      },
+      {
+        ...baseFields,
+        sessionId: "sess-bad-ts",
+        type: "assistant",
+        uuid: "a1",
+        parentUuid: "u1",
+        timestamp: "2026-03-10T07:00:01.000Z",
+        requestId: "req-1",
+        message: {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "tool-1", name: "Agent", input: {} }],
+          stop_reason: "tool_use",
+        },
+      },
+      {
+        ...baseFields,
+        sessionId: "sess-bad-ts",
+        type: "progress",
+        uuid: "p1",
+        parentUuid: "a1",
+        timestamp: "not-a-date",
+        data: {
+          type: "agent_progress",
+          agentId: "sub-agent-bad",
+          prompt: "Subagent with bad timestamp",
+          message: {},
+        },
+        toolUseID: "agent-tool-1",
+        parentToolUseID: "tool-1",
+      },
+    ]);
+
+    const source = createClaudeCodeTranscriptSource({ sourcePaths: [filePath] });
+    source.connect();
+    const snapshot = await source.readSnapshot(new Date("2026-03-10T07:00:06.000Z").getTime());
+
+    // Parent agent should be fine
+    const parent = snapshot.agents.find((a) => !a.isSubagent);
+    expect(parent).toBeDefined();
+    expect(Number.isNaN(parent?.startedAt)).toBe(false);
+    expect(Number.isNaN(parent?.updatedAt)).toBe(false);
+
+    // The subagent with the bad timestamp should either be skipped
+    // or have no NaN in its numeric fields
+    for (const agent of snapshot.agents) {
+      expect(Number.isNaN(agent.startedAt)).toBe(false);
+      expect(Number.isNaN(agent.updatedAt)).toBe(false);
+    }
+  });
+
   it("skips file-history-snapshot and queue-operation records without warnings", async () => {
     const dir = createTempDir("skip");
     const filePath = writeSession(dir, "sess-skip.jsonl", [
