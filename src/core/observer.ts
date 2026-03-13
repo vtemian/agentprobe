@@ -1,6 +1,3 @@
-import { createWatchRuntime } from "./runtime/index";
-import { emitToListeners } from "./runtime/shared";
-import { WATCH_LIFECYCLE_KIND, WATCH_RUNTIME_EVENT_TYPES, type WatchSource } from "./types";
 import {
   CANONICAL_AGENT_STATUS,
   type CanonicalAgentSnapshot,
@@ -12,7 +9,10 @@ import type {
   TranscriptProvider,
   TranscriptReadResult,
 } from "./providers";
+import { createWatchRuntime } from "./runtime/index";
+import { emitToListeners } from "./runtime/shared";
 import type { WatchHealth, WatchLifecycleEvent } from "./types";
+import { WATCH_LIFECYCLE_KIND, WATCH_RUNTIME_EVENT_TYPES, type WatchSource } from "./types";
 
 export interface ObserverSnapshot {
   at: number;

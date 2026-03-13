@@ -1,13 +1,13 @@
+import { describe, expect, it, vi } from "vitest";
+import { isWatchRuntimeError, WATCH_RUNTIME_ERROR_CODES } from "@/core/errors";
 import {
-  resolveWaiters,
-  rejectWaiters,
   createNotRunningError,
   createStoppedError,
   disconnectQuietly,
   emitToListeners,
+  rejectWaiters,
+  resolveWaiters,
 } from "@/core/runtime/shared";
-import { isWatchRuntimeError, WATCH_RUNTIME_ERROR_CODES } from "@/core/errors";
-import { describe, expect, it, vi } from "vitest";
 
 describe("resolveWaiters", () => {
   it("resolves every waiter with the given snapshot", () => {

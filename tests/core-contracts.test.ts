@@ -1,5 +1,5 @@
-import * as core from "@/core/index";
 import { describe, expect, it } from "vitest";
+import * as core from "@/core/index";
 
 describe("core provider contracts", () => {
   it("exports correct runtime state constants", () => {

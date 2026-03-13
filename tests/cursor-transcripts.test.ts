@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { createCursorTranscriptSource } from "@/providers/cursor/transcripts";
 import { afterEach, describe, expect, it } from "vitest";
+import { createCursorTranscriptSource } from "@/providers/cursor/transcripts";
 
 describe("cursor transcripts", () => {
   const cleanupPaths: string[] = [];

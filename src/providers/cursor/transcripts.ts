@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { z } from "zod";
 import {
   CANONICAL_AGENT_KIND,
   CANONICAL_AGENT_STATUS,
@@ -8,7 +9,6 @@ import {
   type CanonicalAgentSnapshot,
   type CanonicalAgentStatus,
 } from "@/core/model";
-import { z } from "zod";
 import {
   AGENT_COMPLETION_QUIET_WINDOW_MS,
   AGENT_NAME_PREFIX_LENGTH,

@@ -4,18 +4,18 @@ export {
   type TranscriptDiscoveryOptions,
 } from "./discovery";
 export {
-  createCursorTranscriptProvider,
   type CursorTranscriptProviderOptions,
+  createCursorTranscriptProvider,
 } from "./provider";
 export {
-  createCursorTranscriptSource,
   type CursorTranscriptSource,
   type CursorTranscriptSourceOptions,
+  createCursorTranscriptSource,
   type TranscriptSourceResult,
 } from "./transcripts";
 export {
-  createCursorWatch,
   CURSOR_WATCH_DEBOUNCE_MS,
   type CursorWatch,
   type CursorWatchOptions,
+  createCursorWatch,
 } from "./watch";

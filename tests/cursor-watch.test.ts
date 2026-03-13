@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { createCursorWatch, CURSOR_WATCH_DEBOUNCE_MS } from "@/providers/cursor/watch";
 import { afterEach, describe, expect, it } from "vitest";
+import { CURSOR_WATCH_DEBOUNCE_MS, createCursorWatch } from "@/providers/cursor/watch";
 
 function tmpDir(): string {
   return path.join(

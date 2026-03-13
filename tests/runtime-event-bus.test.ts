@@ -1,5 +1,5 @@
-import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "@/core/runtime/event-bus";
 import { describe, expect, it, vi } from "vitest";
+import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "@/core/runtime/event-bus";
 
 type TestEvent = { type: string; id?: string };
 

@@ -1,4 +1,4 @@
-import { readdirSync, statSync, type Stats } from "node:fs";
+import { readdirSync, type Stats, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { MAX_DISCOVERED_TRANSCRIPT_FILES, TRANSCRIPT_FILE_EXTENSION } from "./constants";

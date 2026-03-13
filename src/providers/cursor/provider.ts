@@ -1,24 +1,24 @@
 import {
-  PROVIDER_KINDS,
   type CanonicalAgentSnapshot,
   type CanonicalSnapshot,
   type DiscoveryInput,
   type DiscoveryResult,
+  PROVIDER_KINDS,
   type TranscriptProvider,
   type TranscriptReadResult,
 } from "@/core";
+import { CURSOR_SOURCE_KIND } from "./constants";
 import {
   listTranscriptFileNames,
   resolveTranscriptDirectories,
   resolveTranscriptSourcePaths,
 } from "./discovery";
 import {
-  createCursorTranscriptSource,
   type CursorTranscriptSource,
+  createCursorTranscriptSource,
   type TranscriptSourceResult,
 } from "./transcripts";
-import { createCursorWatch, type CursorWatchOptions } from "./watch";
-import { CURSOR_SOURCE_KIND } from "./constants";
+import { type CursorWatchOptions, createCursorWatch } from "./watch";
 
 export interface CursorTranscriptProviderOptions {
   sourceLabel?: string;

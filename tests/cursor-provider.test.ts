@@ -1,5 +1,5 @@
-import { createCursorTranscriptProvider, CURSOR_WATCH_DEBOUNCE_MS } from "@/providers/cursor";
 import { describe, expect, it } from "vitest";
+import { CURSOR_WATCH_DEBOUNCE_MS, createCursorTranscriptProvider } from "@/providers/cursor";
 
 describe("cursor transcript provider", () => {
   it("includes watch by default", () => {

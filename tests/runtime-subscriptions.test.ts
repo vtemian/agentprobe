@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeSubscriptions } from "@/core/runtime/subscriptions";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 function createTestOptions(overrides: Record<string, unknown> = {}) {
   return {

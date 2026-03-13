@@ -1,11 +1,11 @@
 import { mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   resolveTranscriptDirectories,
   resolveTranscriptSourcePaths,
 } from "@/providers/cursor/discovery";
-import { describe, expect, it, afterEach } from "vitest";
 
 function workspaceToTranscriptDir(workspacePath: string): string {
   const workspaceId = path.resolve(workspacePath).replace(/^\/+/, "").split(/[\\/]/).join("-");

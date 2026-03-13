@@ -1,5 +1,5 @@
-import { createLifecycleMapper, WATCH_LIFECYCLE_KIND } from "@/core/index";
 import { describe, expect, it } from "vitest";
+import { createLifecycleMapper, WATCH_LIFECYCLE_KIND } from "@/core/index";
 
 describe("createLifecycleMapper", () => {
   it("reset clears previous status tracking so agents re-emit joined", () => {

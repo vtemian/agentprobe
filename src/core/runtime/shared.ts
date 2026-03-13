@@ -1,9 +1,9 @@
-import type { WatchSnapshot } from "@/core/types";
 import {
   WATCH_RUNTIME_ERROR_CODES,
   WATCH_RUNTIME_ERROR_MESSAGES,
   WatchRuntimeError,
 } from "@/core/errors";
+import type { WatchSnapshot } from "@/core/types";
 
 export const DEFAULT_DEBOUNCE_MS = 150;
 export const DEFAULT_CHECK_IDLE_DELAY_MS = 2_000;
