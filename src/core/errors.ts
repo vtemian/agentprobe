@@ -8,6 +8,9 @@ export function toError(value: unknown): Error {
   try {
     return new Error(JSON.stringify(value));
   } catch {
+    // JSON.stringify fails on circular references or objects with toJSON that throws.
+    // Fall back to String() — producing *some* error message is more important than
+    // preserving the original shape.
     return new Error(String(value));
   }
 }

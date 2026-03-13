@@ -132,12 +132,12 @@ function isTranscriptSourceResult(value: unknown): value is TranscriptSourceResu
   );
 }
 
-function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length !== b.length) {
+function arraysEqual(previous: readonly string[], current: readonly string[]): boolean {
+  if (previous.length !== current.length) {
     return false;
   }
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
+  for (let index = 0; index < previous.length; index++) {
+    if (previous[index] !== current[index]) {
       return false;
     }
   }

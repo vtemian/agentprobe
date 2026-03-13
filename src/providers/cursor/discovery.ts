@@ -72,6 +72,8 @@ function collectTranscriptPaths(inputPaths: readonly string[]): DiscoveredTransc
     try {
       stats = statSync(normalizedPath);
     } catch {
+      // statSync fails for ENOENT, EACCES, etc. — skip unreachable paths silently;
+      // discovery is best-effort and caller handles partial results.
       continue;
     }
 
