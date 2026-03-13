@@ -1,4 +1,5 @@
 import { createWatchRuntime } from "./runtime/index";
+import { emitToListeners } from "./runtime/shared";
 import { WATCH_LIFECYCLE_KIND, WATCH_RUNTIME_EVENT_TYPES, type WatchSource } from "./types";
 import {
   CANONICAL_AGENT_STATUS,
@@ -137,13 +138,7 @@ export function createObserver(options: ObserverOptions): Observer {
   }
 
   function emit(event: ObserverChangeEvent): void {
-    for (const listener of listeners) {
-      try {
-        listener(event);
-      } catch {
-        // Keep observer fan-out resilient to listener failures.
-      }
-    }
+    emitToListeners(listeners, event);
   }
 
   async function stop(): Promise<void> {

@@ -63,6 +63,19 @@ export function createStoppedError(): Error {
   );
 }
 
+export function emitToListeners<TEvent>(
+  listeners: Set<(event: TEvent) => void>,
+  event: TEvent,
+): void {
+  for (const listener of listeners) {
+    try {
+      listener(event);
+    } catch {
+      // Keep event fan-out resilient to listener failures.
+    }
+  }
+}
+
 export async function disconnectQuietly(source: {
   disconnect?(): Promise<void> | void;
 }): Promise<void> {

@@ -9,6 +9,7 @@ import {
   createNotRunningError,
   createStoppedError,
   disconnectQuietly,
+  emitToListeners,
   rejectWaiters,
   resolveWaiters,
 } from "./shared";
@@ -365,13 +366,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
   }
 
   function emit(event: WatchRuntimeEvent<TAgent, TStatus>): void {
-    for (const listener of listeners) {
-      try {
-        listener(event);
-      } catch {
-        // Keep runtime loop healthy even if consumer listeners throw.
-      }
-    }
+    emitToListeners(listeners, event);
   }
 
   return {
