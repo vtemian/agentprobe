@@ -151,6 +151,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
   const bus = createEventBus<RuntimeBusEvent>({
     getToken: () => runtimeState.lifecycleToken,
+    onHandlerError: emitRuntimeError,
     handlers: {
       [RUNTIME_BUS_EVENT_TYPES.fileChanged]: async () => {
         if (!isStarted()) {

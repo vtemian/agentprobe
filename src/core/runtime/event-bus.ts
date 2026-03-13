@@ -1,3 +1,5 @@
+import { toError } from "@/core/errors";
+
 export const RUNTIME_BUS_EVENT_TYPES = {
   fileChanged: "file-changed",
   checkIdle: "check-idle",
@@ -10,6 +12,7 @@ export type RuntimeBusEventType =
 export interface EventBusOptions<TEvent extends { type: string }> {
   handlers: Record<string, (event: TEvent) => Promise<void> | void>;
   getToken: () => number;
+  onHandlerError?: (error: Error) => void;
 }
 
 export interface EventBus<TEvent extends { type: string }> {
@@ -42,9 +45,10 @@ export function createEventBus<TEvent extends { type: string }>(
 
       try {
         await handler(event);
-      } catch {
+      } catch (error) {
         // Handler errors must not crash the bus — a failing handler would block all
         // subsequent events in the queue, causing the runtime to silently stop responding.
+        options.onHandlerError?.(toError(error));
       }
     }
 

@@ -106,6 +106,27 @@ describe("createEventBus", () => {
     expect(calls).toEqual(["fail", "ok-1"]);
   });
 
+  it("reports handler errors via onHandlerError callback", async () => {
+    const reportedErrors: Error[] = [];
+    const bus = createEventBus<TestEvent>({
+      handlers: {
+        test: () => {
+          throw new Error("handler boom");
+        },
+      },
+      getToken: () => 1,
+      onHandlerError: (error) => {
+        reportedErrors.push(error);
+      },
+    });
+
+    bus.dispatch({ type: "test" }, 1);
+    await waitUntil(() => reportedErrors.length > 0, 500);
+
+    expect(reportedErrors).toHaveLength(1);
+    expect(reportedErrors[0]?.message).toBe("handler boom");
+  });
+
   it("clear discards queued events", async () => {
     const handler = vi.fn<() => Promise<void>>(async () => {
       await delay(50);
