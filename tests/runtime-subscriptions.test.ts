@@ -170,21 +170,38 @@ describe("createRuntimeSubscriptions", () => {
   });
 
   describe("closeSubscriptions", () => {
-    it("closes all subscriptions and prevents further file change events", () => {
-      let fileChangedCount = 0;
-      const event = createCallbackHolder();
+    it("closes all subscription handles", () => {
       const closeFns = [vi.fn(), vi.fn()];
       let callIndex = 0;
       const options = createTestOptions({
         watchPaths: ["/a", "/b"],
+        subscribeToChanges: (_path: string, _onEvent: () => void) => {
+          const close = closeFns[callIndex] ?? vi.fn();
+          callIndex++;
+          return { close };
+        },
+      });
+
+      const subs = createRuntimeSubscriptions(options);
+      subs.initializeSubscriptions(1);
+      subs.closeSubscriptions();
+
+      for (const close of closeFns) {
+        expect(close).toHaveBeenCalled();
+      }
+    });
+
+    it("pending debounce does not fire after clearDebounceTimer + close", () => {
+      let fileChangedCount = 0;
+      const event = createCallbackHolder();
+      const options = createTestOptions({
+        watchPaths: ["/a"],
         onFileChanged: () => {
           fileChangedCount++;
         },
         subscribeToChanges: (_path: string, onEvent: () => void) => {
           event.capture(onEvent);
-          const close = closeFns[callIndex] ?? vi.fn();
-          callIndex++;
-          return { close };
+          return { close: vi.fn() };
         },
       });
 
@@ -194,10 +211,6 @@ describe("createRuntimeSubscriptions", () => {
       event.fire();
       subs.clearDebounceTimer();
       subs.closeSubscriptions();
-
-      for (const close of closeFns) {
-        expect(close).toHaveBeenCalled();
-      }
 
       vi.advanceTimersByTime(1000);
       expect(fileChangedCount).toBe(0);

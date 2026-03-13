@@ -1,5 +1,5 @@
 export default {
-  "*.{ts,tsx}": ["biome format --write", "eslint --fix"],
-  "*.{js,jsx}": ["biome format --write"],
-  "*.json": ["biome format --write"],
+  "*.{ts,tsx}": ["biome check --write", "eslint --fix"],
+  "*.{js,jsx}": ["biome check --write"],
+  "*.json": ["biome check --write"],
 };
