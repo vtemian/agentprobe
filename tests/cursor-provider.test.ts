@@ -43,6 +43,50 @@ describe("cursor transcript provider", () => {
     expect(snapshot.agents).toHaveLength(0);
   });
 
+  it("returns empty agents when payload is null", async () => {
+    const provider = createCursorTranscriptProvider();
+    const health = { connected: true, sourceLabel: "cursor-transcripts", warnings: [] };
+
+    const snapshot = await provider.normalize(
+      {
+        records: [
+          {
+            provider: "cursor",
+            inputUri: "cursor://transcripts",
+            observedAt: Date.now(),
+            payload: null,
+          },
+        ],
+        health,
+      },
+      Date.now(),
+    );
+
+    expect(snapshot.agents).toHaveLength(0);
+  });
+
+  it("returns empty agents when payload is missing agents field", async () => {
+    const provider = createCursorTranscriptProvider();
+    const health = { connected: true, sourceLabel: "cursor-transcripts", warnings: [] };
+
+    const snapshot = await provider.normalize(
+      {
+        records: [
+          {
+            provider: "cursor",
+            inputUri: "cursor://transcripts",
+            observedAt: Date.now(),
+            payload: { notAgents: [] },
+          },
+        ],
+        health,
+      },
+      Date.now(),
+    );
+
+    expect(snapshot.agents).toHaveLength(0);
+  });
+
   it("extracts agents from valid payload regardless of other field shapes", async () => {
     const provider = createCursorTranscriptProvider();
     const now = Date.now();
