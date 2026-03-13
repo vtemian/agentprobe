@@ -1,21 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEventBus, RUNTIME_BUS_EVENT_TYPES } from "@/core/runtime/event-bus";
+import { delay, waitUntil } from "./helpers";
 
 type TestEvent = { type: string; id?: string };
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function waitUntil(predicate: () => boolean, timeoutMs: number): Promise<void> {
-  const start = Date.now();
-  while (!predicate()) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`waitUntil timed out after ${timeoutMs}ms`);
-    }
-    await delay(20);
-  }
-}
 
 describe("createEventBus", () => {
   it("processes events sequentially so async handlers do not overlap", async () => {

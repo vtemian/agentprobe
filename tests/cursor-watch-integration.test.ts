@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ObserverChangeEvent } from "@/core/observer";
 import { createObserver } from "@/index";
 import { cursor } from "@/providers/cursor";
+import { delay, waitForCount } from "./helpers";
 
 describe("cursor watch integration", () => {
   const cleanupPaths: string[] = [];
@@ -116,20 +117,6 @@ function workspaceToTranscriptDir(workspacePath: string): string {
   return path.join(homedir(), ".cursor", "projects", workspaceId, "agent-transcripts");
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function writeTranscriptRecord(filePath: string, record: Record<string, unknown>): void {
   writeFileSync(filePath, `${JSON.stringify(record)}\n`, { encoding: "utf8", flag: "a" });
-}
-
-async function waitForCount(items: unknown[], count: number, timeoutMs: number): Promise<void> {
-  const start = Date.now();
-  while (items.length < count) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`Expected ${count} item(s), got ${items.length} after ${timeoutMs}ms`);
-    }
-    await delay(50);
-  }
 }
