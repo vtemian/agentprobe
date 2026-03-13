@@ -1,13 +1,11 @@
 import { readdirSync, statSync, type Stats } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { MAX_DISCOVERED_TRANSCRIPT_FILES, TRANSCRIPT_FILE_EXTENSION } from "./constants";
 
 export interface TranscriptDiscoveryOptions {
   workspacePaths: string[];
 }
-
-const TRANSCRIPT_FILE_EXTENSION = ".jsonl";
-const MAX_DISCOVERED_TRANSCRIPT_FILES = 400;
 
 interface DiscoveredTranscriptFile {
   path: string;

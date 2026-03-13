@@ -11,8 +11,13 @@ import {
 import { z } from "zod";
 import {
   AGENT_COMPLETION_QUIET_WINDOW_MS,
+  AGENT_NAME_PREFIX_LENGTH,
   CURSOR_SOURCE_KIND,
+  IDLE_WINDOW_MS,
+  RUNNING_WINDOW_MS,
   STREAMING_QUIET_WINDOW_MS,
+  SUBAGENT_PATH_SEGMENT,
+  TRANSCRIPT_FILE_EXTENSION,
 } from "./constants";
 
 interface CursorTranscriptRecord {
@@ -73,9 +78,6 @@ interface TranscriptFileCache {
   state: TranscriptParseState;
   fileUpdatedAt: number;
 }
-
-const RUNNING_WINDOW_MS = 3_000;
-const IDLE_WINDOW_MS = 60_000;
 
 const conversationLineSchema = z.object({
   role: nonEmptyStringSchema,
@@ -542,17 +544,17 @@ function deriveConversationStatus(
 // --- Path helpers ---
 
 function deriveAgentId(sourcePath: string): string {
-  const fileName = path.basename(sourcePath, ".jsonl");
+  const fileName = path.basename(sourcePath, TRANSCRIPT_FILE_EXTENSION);
   return fileName.length > 0 ? fileName : sourcePath;
 }
 
 function deriveAgentName(agentId: string, sourcePath: string): string {
   const prefix = isSubagentPath(sourcePath) ? "Subagent" : "Agent";
-  return `${prefix} ${agentId.slice(0, 6)}`;
+  return `${prefix} ${agentId.slice(0, AGENT_NAME_PREFIX_LENGTH)}`;
 }
 
 function isSubagentPath(sourcePath: string): boolean {
-  return sourcePath.replaceAll("\\", "/").includes("/subagents/");
+  return sourcePath.replaceAll("\\", "/").includes(SUBAGENT_PATH_SEGMENT);
 }
 
 function isAssistantRole(role: string): boolean {
