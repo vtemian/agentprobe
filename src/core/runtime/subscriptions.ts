@@ -30,6 +30,7 @@ export function createRuntimeSubscriptions(options: RuntimeSubscriptionsOptions)
   clearDebounceTimer(): void;
   closeSubscriptions(): void;
   clearResubscribeTimers(): void;
+  dispose(): void;
 } {
   const subscriptions: ChangeSubscription[] = [];
   const pendingTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
@@ -193,10 +194,17 @@ export function createRuntimeSubscriptions(options: RuntimeSubscriptionsOptions)
     }
   }
 
+  function dispose(): void {
+    clearDebounceTimer();
+    closeSubscriptions();
+    clearResubscribeTimers();
+  }
+
   return {
     initializeSubscriptions,
     clearDebounceTimer,
     closeSubscriptions,
     clearResubscribeTimers,
+    dispose,
   };
 }

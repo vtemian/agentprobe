@@ -322,4 +322,32 @@ describe("createRuntimeSubscriptions", () => {
       expect(attempt).toBe(1);
     });
   });
+
+  describe("dispose", () => {
+    it("clears all timers and closes all subscriptions", () => {
+      let fileChangedCount = 0;
+      const event = createCallbackHolder();
+      const closeFn = vi.fn();
+      const options = createTestOptions({
+        watchPaths: ["/a"],
+        onFileChanged: () => {
+          fileChangedCount++;
+        },
+        subscribeToChanges: (_path: string, onEvent: () => void) => {
+          event.capture(onEvent);
+          return { close: closeFn };
+        },
+      });
+
+      const subs = createRuntimeSubscriptions(options);
+      subs.initializeSubscriptions(1);
+
+      event.fire();
+      subs.dispose();
+
+      vi.advanceTimersByTime(10_000);
+      expect(fileChangedCount).toBe(0);
+      expect(closeFn).toHaveBeenCalled();
+    });
+  });
 });

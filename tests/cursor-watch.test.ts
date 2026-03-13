@@ -2,26 +2,13 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CURSOR_WATCH_DEBOUNCE_MS, createCursorWatch } from "@/providers/cursor/watch";
+import { delay, waitUntil } from "./helpers";
 
 function tmpDir(): string {
   return path.join(
     "/tmp",
     `cursor-watch-test-${Date.now()}-${Math.random().toString(16).slice(2)}`,
   );
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function waitUntil(predicate: () => boolean, timeoutMs: number): Promise<void> {
-  const start = Date.now();
-  while (!predicate()) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`waitUntil timed out after ${timeoutMs}ms`);
-    }
-    await delay(50);
-  }
 }
 
 /**

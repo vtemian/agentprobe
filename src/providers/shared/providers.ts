@@ -81,6 +81,11 @@ export function readSourceFile(sourcePath: string): Promise<string | null> {
   return readFile(sourcePath, "utf8").catch(() => null);
 }
 
+export function parseTimestampMs(value: string): number | undefined {
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? undefined : ms;
+}
+
 export interface ProcessFileResult {
   agents: CanonicalAgentSnapshot[];
   success: boolean;

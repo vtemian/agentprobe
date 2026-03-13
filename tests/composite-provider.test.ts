@@ -161,6 +161,63 @@ describe("composite provider", () => {
     expect(composite.watch?.debounceMs).toBe(100); // uses minimum
   });
 
+  it("returns results from healthy providers when one provider discover() throws", async () => {
+    const healthyProvider = mockProvider("healthy", [{ id: "h1", status: "running" }]);
+    const failingProvider: TranscriptProvider = {
+      ...mockProvider("broken", []),
+      discover: () => {
+        throw new Error("discover exploded");
+      },
+    };
+
+    const composite = createCompositeProvider([failingProvider, healthyProvider]);
+    const discovery = await composite.discover(["/workspace"]);
+
+    expect(discovery.inputs).toHaveLength(1);
+    expect(discovery.inputs[0]?.metadata?.providerId).toBe("healthy");
+    expect(discovery.warnings).toContain("[broken] discover exploded");
+  });
+
+  it("returns results from healthy providers when one provider read() throws", async () => {
+    const healthyProvider = mockProvider("healthy", [{ id: "h1", status: "running" }]);
+    const failingProvider: TranscriptProvider = {
+      ...mockProvider("broken", []),
+      read: () => {
+        throw new Error("read exploded");
+      },
+    };
+
+    const composite = createCompositeProvider([failingProvider, healthyProvider]);
+    const discovery = await composite.discover(["/workspace"]);
+    const readResult = await composite.read(discovery.inputs, Date.now());
+
+    expect(readResult.records).toHaveLength(1);
+    expect(readResult.records[0]?.provider).toBe("healthy");
+    expect(readResult.health.connected).toBe(true);
+    expect(readResult.health.warnings).toContain("[broken] read exploded");
+  });
+
+  it("connects remaining providers when one provider connect() throws", async () => {
+    let healthyConnected = false;
+    const healthyProvider: TranscriptProvider = {
+      ...mockProvider("healthy", []),
+      connect: () => {
+        healthyConnected = true;
+      },
+    };
+    const failingProvider: TranscriptProvider = {
+      ...mockProvider("broken", []),
+      connect: () => {
+        throw new Error("connect exploded");
+      },
+    };
+
+    const composite = createCompositeProvider([failingProvider, healthyProvider]);
+    await composite.connect?.();
+
+    expect(healthyConnected).toBe(true);
+  });
+
   it("health is connected when any provider is connected", async () => {
     const okProvider = mockProvider("ok", [{ id: "a1", status: "running" }]);
     const failProvider: TranscriptProvider = {

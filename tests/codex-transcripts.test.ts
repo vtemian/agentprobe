@@ -273,4 +273,43 @@ describe("codex transcripts", () => {
 
     expect(snapshot.agents[0].status).toBe("completed");
   });
+
+  it("skips records with invalid timestamps without corrupting agent snapshots", async () => {
+    const dir = createTempDir("bad-timestamp");
+    // Put the invalid-timestamp record first so that firstTimestamp becomes NaN
+    // before any valid timestamp can be set
+    const filePath = writeSession(dir, "session.jsonl", [
+      {
+        type: "response_item" as const,
+        timestamp: "not-a-date",
+        payload: {
+          type: "message" as const,
+          role: "user" as const,
+          content: [{ type: "input_text", text: "bad timestamp task" }],
+        },
+      },
+      sessionMeta,
+      userMessage("valid task", "2026-03-10T07:00:01.000Z"),
+      assistantMessage("2026-03-10T07:00:02.000Z"),
+    ]);
+
+    const now = Date.now();
+    setFileMtime(filePath, now);
+
+    const source = createCodexTranscriptSource({ sourcePaths: [filePath] });
+    source.connect();
+    const snapshot = await source.readSnapshot(now);
+
+    expect(snapshot.agents).toHaveLength(1);
+    const agent = snapshot.agents[0];
+    // No NaN should appear in any numeric field
+    for (const key of ["startedAt", "updatedAt"] as const) {
+      expect(Number.isNaN(agent[key])).toBe(false);
+    }
+    // startedAt should reflect the earliest VALID timestamp
+    expect(agent.startedAt).toBe(new Date("2026-03-10T07:00:00.000Z").getTime());
+    // The record with invalid timestamp should be skipped entirely,
+    // so messageCount should only include the valid user + assistant messages
+    expect(agent.metadata?.messageCount).toBe(2);
+  });
 });

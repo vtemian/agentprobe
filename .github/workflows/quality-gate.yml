@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   check:
@@ -26,3 +25,6 @@ jobs:
 
       - name: Quality gate
         run: npm run check
+
+      - name: Build
+        run: npm run build

@@ -28,15 +28,19 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
     const allWarnings: string[] = [];
 
     for (const provider of providers) {
-      const result = await provider.discover(workspacePaths);
-      for (const input of result.inputs) {
-        allInputs.push({
-          ...input,
-          metadata: { ...input.metadata, providerId: provider.id },
-        });
+      try {
+        const result = await provider.discover(workspacePaths);
+        for (const input of result.inputs) {
+          allInputs.push({
+            ...input,
+            metadata: { ...input.metadata, providerId: provider.id },
+          });
+        }
+        allWatchPaths.push(...result.watchPaths);
+        allWarnings.push(...result.warnings);
+      } catch (error) {
+        allWarnings.push(`[${provider.id}] ${toError(error).message}`);
       }
-      allWatchPaths.push(...result.watchPaths);
-      allWarnings.push(...result.warnings);
     }
 
     return {
@@ -48,7 +52,11 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
 
   async function connect(): Promise<void> {
     for (const provider of providers) {
-      await provider.connect?.();
+      try {
+        await provider.connect?.();
+      } catch {
+        // best-effort: continue connecting remaining providers
+      }
     }
   }
 
@@ -86,13 +94,17 @@ export function createCompositeProvider(providers: TranscriptProvider[]): Transc
         continue;
       }
 
-      const result = await provider.read(providerInputs, now);
-      allRecords.push(...result.records);
-      allWarnings.push(...result.health.warnings);
-      if (result.health.connected) {
-        anyConnected = true;
+      try {
+        const result = await provider.read(providerInputs, now);
+        allRecords.push(...result.records);
+        allWarnings.push(...result.health.warnings);
+        if (result.health.connected) {
+          anyConnected = true;
+        }
+        sourceLabels.push(result.health.sourceLabel);
+      } catch (error) {
+        allWarnings.push(`[${provider.id}] ${toError(error).message}`);
       }
-      sourceLabels.push(result.health.sourceLabel);
     }
 
     return {

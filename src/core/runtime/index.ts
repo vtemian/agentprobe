@@ -151,6 +151,7 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
   const bus = createEventBus<RuntimeBusEvent>({
     getToken: () => runtimeState.lifecycleToken,
+    onHandlerError: emitRuntimeError,
     handlers: {
       [RUNTIME_BUS_EVENT_TYPES.fileChanged]: async () => {
         if (!isStarted()) {
@@ -308,10 +309,8 @@ export function createWatchRuntime<TAgent, TStatus extends string = string>(
 
     runtimeState.state = WATCH_RUNTIME_INTERNAL_STATES.stopping;
     const token = nextLifecycleToken();
-    subs.clearDebounceTimer();
+    subs.dispose();
     clearIdleTimer();
-    subs.closeSubscriptions();
-    subs.clearResubscribeTimers();
     bus.clear();
     lifecycle.reset();
 
