@@ -1,4 +1,3 @@
-import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   CANONICAL_AGENT_KIND,
@@ -7,9 +6,19 @@ import {
   type CanonicalAgentSnapshot,
   type CanonicalAgentStatus,
 } from "@/core/model";
+import { formatLineWarning } from "@/providers/shared/discovery";
+import {
+  type ProcessFileResult,
+  mergeAgents,
+  pruneStaleCache,
+  readSourceFile,
+  statSourceFile,
+} from "@/providers/shared/providers";
 import { z } from "zod";
 import {
   AGENT_COMPLETION_QUIET_WINDOW_MS,
+  CURSOR_IDLE_WINDOW_MS,
+  CURSOR_RUNNING_WINDOW_MS,
   CURSOR_SOURCE_KIND,
   STREAMING_QUIET_WINDOW_MS,
 } from "./constants";
@@ -73,9 +82,6 @@ interface TranscriptFileCache {
   fileUpdatedAt: number;
 }
 
-const RUNNING_WINDOW_MS = 3_000;
-const IDLE_WINDOW_MS = 60_000;
-
 const conversationLineSchema = z.object({
   role: nonEmptyStringSchema,
   message: z
@@ -85,7 +91,7 @@ const conversationLineSchema = z.object({
     .optional(),
 });
 
-export interface TranscriptSourceResult {
+export interface CursorTranscriptSourceResult {
   agents: CanonicalAgentSnapshot[];
   connected: boolean;
   sourceLabel: string;
@@ -99,10 +105,9 @@ export interface CursorTranscriptSourceOptions {
 
 export interface CursorTranscriptSource {
   readonly sourceKind: typeof CURSOR_SOURCE_KIND;
-  connect(): Promise<void> | void;
-  disconnect(): Promise<void> | void;
-  readSnapshot(now?: number): Promise<TranscriptSourceResult> | TranscriptSourceResult;
-  getWatchPaths?(): string[];
+  connect(): void;
+  disconnect(): void;
+  readSnapshot(now?: number): Promise<CursorTranscriptSourceResult>;
 }
 
 export function createCursorTranscriptSource(
@@ -122,7 +127,7 @@ export function createCursorTranscriptSource(
     fileCache.clear();
   }
 
-  async function readSnapshot(now: number = Date.now()): Promise<TranscriptSourceResult> {
+  async function readSnapshot(now: number = Date.now()): Promise<CursorTranscriptSourceResult> {
     if (!connected) {
       return {
         agents: [],
@@ -141,89 +146,24 @@ export function createCursorTranscriptSource(
       };
     }
 
-    const warnings: string[] = [];
     const orderedIds: string[] = [];
     const latestById = new Map<string, CanonicalAgentSnapshot>();
+    const allWarnings: string[] = [];
     let hasReadError = false;
     let successfulReads = 0;
 
     for (const sourcePath of sourcePaths) {
-      let fileUpdatedAt = now;
-      let fileSizeBytes = 0;
-      try {
-        const stats = await stat(sourcePath);
-        fileUpdatedAt = Math.round(stats.mtimeMs);
-        fileSizeBytes = stats.size;
-      } catch {
-        // Keep default now timestamp when stat access fails.
-      }
-
-      const cached = fileCache.get(sourcePath);
-
-      if (cached && cached.mtimeMs === fileUpdatedAt) {
+      const result = await processSourceFile(sourcePath, now, fileCache);
+      allWarnings.push(...result.warnings);
+      if (result.success) {
         successfulReads += 1;
-        mergeAgents(
-          resolveAgentsFromState(cached.state, sourcePath, cached.fileUpdatedAt, now),
-          orderedIds,
-          latestById,
-        );
-        continue;
-      }
-
-      const contentChanged = !cached || fileSizeBytes !== cached.sizeBytes;
-      const effectiveUpdatedAt = contentChanged ? fileUpdatedAt : cached.fileUpdatedAt;
-
-      if (cached && !contentChanged) {
-        successfulReads += 1;
-        fileCache.set(sourcePath, { ...cached, mtimeMs: fileUpdatedAt });
-        mergeAgents(
-          resolveAgentsFromState(cached.state, sourcePath, effectiveUpdatedAt, now),
-          orderedIds,
-          latestById,
-        );
-        continue;
-      }
-
-      let contents: string;
-      try {
-        contents = await readFile(sourcePath, "utf8");
-        successfulReads += 1;
-      } catch {
-        hasReadError = true;
-        warnings.push(`Failed to read transcript path: ${sourcePath}`);
-        continue;
-      }
-
-      const lines = contents.split(/\r?\n/);
-      let state: TranscriptParseState;
-      let startLine: number;
-
-      if (cached && fileSizeBytes >= cached.sizeBytes && lines.length >= cached.lineCount) {
-        state = cloneParseState(cached.state);
-        startLine = cached.lineCount;
       } else {
-        state = createInitialParseState();
-        startLine = 0;
+        hasReadError = true;
       }
-
-      accumulateLines(state, lines, startLine, sourcePath, warnings);
-
-      fileCache.set(sourcePath, {
-        mtimeMs: fileUpdatedAt,
-        sizeBytes: fileSizeBytes,
-        lineCount: lines.length,
-        state: cloneParseState(state),
-        fileUpdatedAt: effectiveUpdatedAt,
-      });
-
-      mergeAgents(
-        resolveAgentsFromState(state, sourcePath, effectiveUpdatedAt, now),
-        orderedIds,
-        latestById,
-      );
+      mergeAgents(result.agents, orderedIds, latestById);
     }
 
-    pruneStaleEntries(fileCache, sourcePaths);
+    pruneStaleCache(fileCache, sourcePaths);
 
     const agents = orderedIds
       .map((id) => latestById.get(id))
@@ -233,7 +173,7 @@ export function createCursorTranscriptSource(
       agents,
       connected: successfulReads > 0 || !hasReadError,
       sourceLabel,
-      warnings,
+      warnings: allWarnings,
     };
   }
 
@@ -242,13 +182,80 @@ export function createCursorTranscriptSource(
     connect,
     disconnect,
     readSnapshot,
-    getWatchPaths(): string[] {
-      return [...sourcePaths];
-    },
   };
 }
 
-// --- Parse state management ---
+interface ParseStrategy {
+  state: TranscriptParseState;
+  startLine: number;
+}
+
+function resolveParseStrategy(
+  cached: TranscriptFileCache | undefined,
+  fileSizeBytes: number,
+  lineCount: number,
+): ParseStrategy {
+  if (cached && fileSizeBytes >= cached.sizeBytes && lineCount >= cached.lineCount) {
+    return { state: cloneParseState(cached.state), startLine: cached.lineCount };
+  }
+  return { state: createInitialParseState(), startLine: 0 };
+}
+
+async function processSourceFile(
+  sourcePath: string,
+  now: number,
+  fileCache: Map<string, TranscriptFileCache>,
+): Promise<ProcessFileResult> {
+  const warnings: string[] = [];
+  const { fileUpdatedAt, fileSizeBytes } = await statSourceFile(sourcePath, now);
+
+  const cached = fileCache.get(sourcePath);
+
+  if (cached && cached.mtimeMs === fileUpdatedAt && cached.sizeBytes === fileSizeBytes) {
+    return {
+      agents: resolveAgentsFromState(cached.state, sourcePath, cached.fileUpdatedAt, now),
+      success: true,
+      warnings,
+    };
+  }
+
+  const contentChanged = !cached || fileSizeBytes !== cached.sizeBytes;
+  const effectiveUpdatedAt = contentChanged ? fileUpdatedAt : cached.fileUpdatedAt;
+
+  if (cached && !contentChanged) {
+    fileCache.set(sourcePath, { ...cached, mtimeMs: fileUpdatedAt });
+    return {
+      agents: resolveAgentsFromState(cached.state, sourcePath, effectiveUpdatedAt, now),
+      success: true,
+      warnings,
+    };
+  }
+
+  const contents = await readSourceFile(sourcePath);
+  if (contents === null) {
+    warnings.push(`Failed to read transcript path: ${sourcePath}`);
+    return { agents: [], success: false, warnings };
+  }
+
+  const lines = contents.split(/\r?\n/);
+  const { state, startLine } = resolveParseStrategy(cached, fileSizeBytes, lines.length);
+
+  accumulateLines(state, lines, startLine, sourcePath, warnings);
+
+  fileCache.set(sourcePath, {
+    mtimeMs: fileUpdatedAt,
+    sizeBytes: fileSizeBytes,
+    lineCount: lines.length,
+    state: cloneParseState(state),
+    fileUpdatedAt: effectiveUpdatedAt,
+  });
+
+  return {
+    agents: resolveAgentsFromState(state, sourcePath, effectiveUpdatedAt, now),
+    success: true,
+    warnings,
+  };
+}
 
 function createInitialParseState(): TranscriptParseState {
   return {
@@ -265,8 +272,6 @@ function createInitialParseState(): TranscriptParseState {
 function cloneParseState(state: TranscriptParseState): TranscriptParseState {
   return { ...state, flatAgents: [...state.flatAgents] };
 }
-
-// --- Incremental line parser ---
 
 function accumulateLines(
   state: TranscriptParseState,
@@ -370,8 +375,6 @@ function accumulateFlatRecord(
   state.flatAgents.push(snapshot);
 }
 
-// --- Agent resolution ---
-
 function resolveAgentsFromState(
   state: TranscriptParseState,
   sourcePath: string,
@@ -403,41 +406,6 @@ function resolveAgentsFromState(
   ];
 }
 
-// --- Merge and cache helpers ---
-
-function mergeAgents(
-  agents: CanonicalAgentSnapshot[],
-  orderedIds: string[],
-  latestById: Map<string, CanonicalAgentSnapshot>,
-): void {
-  for (const agent of agents) {
-    const existing = latestById.get(agent.id);
-    if (!existing) {
-      latestById.set(agent.id, agent);
-      orderedIds.push(agent.id);
-    } else if (agent.updatedAt > existing.updatedAt) {
-      latestById.set(agent.id, agent);
-    }
-  }
-}
-
-function pruneStaleEntries(
-  cache: Map<string, TranscriptFileCache>,
-  currentPaths: readonly string[],
-): void {
-  if (cache.size <= currentPaths.length) {
-    return;
-  }
-  const current = new Set(currentPaths);
-  for (const key of cache.keys()) {
-    if (!current.has(key)) {
-      cache.delete(key);
-    }
-  }
-}
-
-// --- Record parsing ---
-
 function parseFlatRecord(value: unknown): CursorTranscriptRecord | null {
   const parsed = flatTranscriptRecordSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
@@ -467,16 +435,10 @@ function parseConversationRecord(value: unknown): ConversationTranscriptRecord |
   return text.length > 0 ? { role, text } : { role };
 }
 
-// --- Text analysis ---
-
 function sanitizeTaskSummary(value: string): string {
   const match = value.match(/<user_query>\s*([\s\S]*?)\s*<\/user_query>/i);
   const query = match ? match[1] : value;
   return query.replace(/\s+/g, " ").trim();
-}
-
-function formatLineWarning(sourcePath: string, lineNumber: number, reason: string): string {
-  return `${sourcePath}:${lineNumber} ${reason}`;
 }
 
 function hasErrorMarker(value: string): boolean {
@@ -513,22 +475,20 @@ function deriveConversationStatus(
     return CANONICAL_AGENT_STATUS.completed;
   }
 
-  if (ageMs <= RUNNING_WINDOW_MS) {
+  if (ageMs <= CURSOR_RUNNING_WINDOW_MS) {
     return CANONICAL_AGENT_STATUS.running;
   }
   if (latestSignal === "active" && !hasAssistantReplyAfterLatestUser) {
-    if (ageMs <= IDLE_WINDOW_MS) {
+    if (ageMs <= CURSOR_IDLE_WINDOW_MS) {
       return CANONICAL_AGENT_STATUS.idle;
     }
     return CANONICAL_AGENT_STATUS.completed;
   }
-  if (ageMs <= IDLE_WINDOW_MS) {
+  if (ageMs <= CURSOR_IDLE_WINDOW_MS) {
     return CANONICAL_AGENT_STATUS.idle;
   }
   return CANONICAL_AGENT_STATUS.completed;
 }
-
-// --- Path helpers ---
 
 function deriveAgentId(sourcePath: string): string {
   const fileName = path.basename(sourcePath, ".jsonl");
@@ -547,8 +507,6 @@ function isSubagentPath(sourcePath: string): boolean {
 function isAssistantRole(role: string): boolean {
   return role === "assistant";
 }
-
-// --- Signal detection ---
 
 function deriveConversationSignal(value: string): ConversationSignal | undefined {
   const normalized = value.toLowerCase();

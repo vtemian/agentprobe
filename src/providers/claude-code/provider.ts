@@ -8,23 +8,27 @@ import {
 } from "@/core";
 import { arraysEqual, normalizeFromPayload } from "@/providers/shared/providers";
 import {
-  listTranscriptFileNames,
-  resolveTranscriptDirectories,
-  resolveTranscriptSourcePaths,
+  listSessionFileNames,
+  resolveSessionDirectories,
+  resolveSessionSourcePaths,
 } from "./discovery";
-import { createCursorTranscriptSource, type CursorTranscriptSource } from "./transcripts";
-import { createCursorWatch, type CursorWatchOptions } from "./watch";
-import { CURSOR_SOURCE_KIND } from "./constants";
+import { createClaudeCodeTranscriptSource, type ClaudeCodeTranscriptSource } from "./transcripts";
+import { createClaudeCodeWatch, type ClaudeCodeWatchOptions } from "./watch";
+import { CLAUDE_CODE_SOURCE_KIND } from "./constants";
 
-export interface CursorOptions {
+export interface ClaudeCodeOptions {
+  claudeHomePath?: string;
   sourceLabel?: string;
-  watch?: CursorWatchOptions | false;
+  watch?: ClaudeCodeWatchOptions | false;
+  maxFiles?: number;
 }
 
-export function cursor(options: CursorOptions = {}): TranscriptProvider {
-  const sourceLabel = options.sourceLabel ?? CURSOR_SOURCE_KIND;
-  const watch = options.watch === false ? undefined : createCursorWatch(options.watch);
-  let source: CursorTranscriptSource | undefined;
+export function claudeCode(options: ClaudeCodeOptions = {}): TranscriptProvider {
+  const sourceLabel = options.sourceLabel ?? CLAUDE_CODE_SOURCE_KIND;
+  const claudeHomePath = options.claudeHomePath;
+  const maxFiles = options.maxFiles;
+  const watch = options.watch === false ? undefined : createClaudeCodeWatch(options.watch);
+  let source: ClaudeCodeTranscriptSource | undefined;
   let sourcePathKey = "";
   let connected = false;
   let cachedDiscovery: DiscoveryResult | undefined;
@@ -32,7 +36,8 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
   let cachedWorkspacePaths: string[] | undefined;
 
   function discover(workspacePaths: string[]): DiscoveryResult {
-    const currentFileList = listTranscriptFileNames({ workspacePaths });
+    const discoveryOptions = { workspacePaths, claudeHomePath, maxFiles };
+    const currentFileList = listSessionFileNames(discoveryOptions);
     if (
       cachedDiscovery &&
       cachedFileList &&
@@ -43,12 +48,12 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
       return cachedDiscovery;
     }
 
-    const watchPaths = resolveTranscriptDirectories({ workspacePaths });
-    const sourcePaths = resolveTranscriptSourcePaths({ workspacePaths });
+    const watchPaths = resolveSessionDirectories(discoveryOptions);
+    const sourcePaths = resolveSessionSourcePaths(discoveryOptions);
     const inputs: DiscoveryInput[] = sourcePaths.map((sourcePath) => ({
       uri: sourcePath,
       kind: "file",
-      metadata: { providerId: PROVIDER_KINDS.cursor },
+      metadata: { providerId: PROVIDER_KINDS.claudeCode },
     }));
     cachedDiscovery = { inputs, watchPaths, warnings: [] };
     cachedFileList = currentFileList;
@@ -84,8 +89,8 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
     return {
       records: [
         {
-          provider: PROVIDER_KINDS.cursor,
-          inputUri: "cursor://transcripts",
+          provider: PROVIDER_KINDS.claudeCode,
+          inputUri: "claude-code://sessions",
           observedAt: now,
           payload: snapshot,
         },
@@ -103,7 +108,7 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
   }
 
   return {
-    id: PROVIDER_KINDS.cursor,
+    id: PROVIDER_KINDS.claudeCode,
     discover,
     connect,
     disconnect,
@@ -114,14 +119,14 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
 }
 
 function ensureSource(
-  existing: CursorTranscriptSource | undefined,
+  existing: ClaudeCodeTranscriptSource | undefined,
   sourcePaths: string[],
   sourceLabel: string,
   previousKey: string,
   nextKey: string,
-): CursorTranscriptSource {
+): ClaudeCodeTranscriptSource {
   if (existing && nextKey === previousKey) {
     return existing;
   }
-  return createCursorTranscriptSource({ sourcePaths, sourceLabel });
+  return createClaudeCodeTranscriptSource({ sourcePaths, sourceLabel });
 }

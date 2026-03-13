@@ -35,6 +35,12 @@
       "import": "./dist/providers/cursor/index.js",
       "require": "./dist/providers/cursor/index.cjs",
       "default": "./dist/providers/cursor/index.js"
+    },
+    "./providers/claude-code": {
+      "types": "./dist/providers/claude-code/index.d.ts",
+      "import": "./dist/providers/claude-code/index.js",
+      "require": "./dist/providers/claude-code/index.cjs",
+      "default": "./dist/providers/claude-code/index.js"
     }
   },
   "typesVersions": {
@@ -44,6 +50,9 @@
       ],
       "providers/cursor": [
         "dist/providers/cursor/index.d.ts"
+      ],
+      "providers/claude-code": [
+        "dist/providers/claude-code/index.d.ts"
       ]
     }
   },

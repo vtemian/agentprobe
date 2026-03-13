@@ -1,17 +1,18 @@
 export {
+  listTranscriptFileNames,
   resolveTranscriptDirectories,
   resolveTranscriptSourcePaths,
   type TranscriptDiscoveryOptions,
 } from "./discovery";
 export {
-  createCursorTranscriptProvider,
-  type CursorTranscriptProviderOptions,
+  cursor,
+  type CursorOptions,
 } from "./provider";
 export {
   createCursorTranscriptSource,
   type CursorTranscriptSource,
   type CursorTranscriptSourceOptions,
-  type TranscriptSourceResult,
+  type CursorTranscriptSourceResult,
 } from "./transcripts";
 export {
   createCursorWatch,

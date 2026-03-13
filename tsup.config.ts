@@ -5,6 +5,7 @@ export default defineConfig({
     index: "src/index.ts",
     "core/index": "src/core/index.ts",
     "providers/cursor/index": "src/providers/cursor/index.ts",
+    "providers/claude-code/index": "src/providers/claude-code/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

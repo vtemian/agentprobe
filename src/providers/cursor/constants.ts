@@ -1,5 +1,9 @@
 export const AGENT_COMPLETION_QUIET_WINDOW_MS = 30_000;
 export const STREAMING_QUIET_WINDOW_MS = 2_000;
+export const CURSOR_RUNNING_WINDOW_MS = 3_000;
+export const CURSOR_IDLE_WINDOW_MS = 60_000;
 export const CURSOR_WATCH_DEBOUNCE_MS = 150;
+
+export const MAX_DISCOVERED_TRANSCRIPT_FILES = 400;
 
 export const CURSOR_SOURCE_KIND = "cursor-transcripts";
