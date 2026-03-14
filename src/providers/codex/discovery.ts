@@ -23,6 +23,10 @@ interface SessionHeader {
 
 const headerCache = new Map<string, SessionHeader>();
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 const FIRST_LINE_BUFFER_SIZE = 4096;
 
 function readFirstLine(filePath: string): string | undefined {
@@ -52,13 +56,16 @@ function parseSessionHeader(filePath: string, mtimeMs: number): SessionHeader | 
   }
 
   try {
-    const record = JSON.parse(line) as Record<string, unknown>;
-    if (record.type !== "session_meta") {
+    const parsed: unknown = JSON.parse(line);
+    if (!isRecord(parsed)) {
       return undefined;
     }
-    const payload = record.payload as Record<string, unknown> | undefined;
+    if (parsed.type !== "session_meta") {
+      return undefined;
+    }
+    const payload = isRecord(parsed.payload) ? parsed.payload : undefined;
     const cwd = payload?.cwd;
-    const sessionId = (payload?.id as string) ?? "";
+    const sessionId = typeof payload?.id === "string" ? payload.id : "";
     if (typeof cwd !== "string" || cwd.length === 0) {
       return undefined;
     }

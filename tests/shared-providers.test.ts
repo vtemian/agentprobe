@@ -20,9 +20,19 @@ describe("shared provider utils", () => {
   it("mergeAgents inserts new and updates existing by updatedAt", () => {
     const orderedIds: string[] = [];
     const latestById = new Map<string, CanonicalAgentSnapshot>();
-    const agent1 = { id: "a1", updatedAt: 100 } as CanonicalAgentSnapshot;
-    const agent1newer = { id: "a1", updatedAt: 200 } as CanonicalAgentSnapshot;
-    const agent2 = { id: "a2", updatedAt: 150 } as CanonicalAgentSnapshot;
+    const base: CanonicalAgentSnapshot = {
+      id: "",
+      name: "",
+      kind: "local",
+      isSubagent: false,
+      status: "running",
+      taskSummary: "",
+      updatedAt: 0,
+      source: "test",
+    };
+    const agent1: CanonicalAgentSnapshot = { ...base, id: "a1", updatedAt: 100 };
+    const agent1newer: CanonicalAgentSnapshot = { ...base, id: "a1", updatedAt: 200 };
+    const agent2: CanonicalAgentSnapshot = { ...base, id: "a2", updatedAt: 150 };
 
     mergeAgents([agent1], orderedIds, latestById);
     expect(orderedIds).toEqual(["a1"]);

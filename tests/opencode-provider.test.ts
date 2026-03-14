@@ -1,6 +1,5 @@
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { DiscoveryResult } from "@/core/providers";
 import { PROVIDER_KINDS } from "@/core/providers";
 import { openCode } from "@/providers/opencode/provider";
 
@@ -39,7 +38,7 @@ describe("opencode provider", () => {
     db.close();
   });
 
-  it("discovers projects matching workspace paths", () => {
+  it("discovers projects matching workspace paths", async () => {
     db.prepare("INSERT INTO project VALUES (?, ?, ?, ?)").run(
       "p1",
       "/Users/test/myproject",
@@ -48,12 +47,12 @@ describe("opencode provider", () => {
     );
 
     const provider = openCode({ _testDb: db });
-    const result = provider.discover(["/Users/test/myproject"]) as DiscoveryResult;
+    const result = await provider.discover(["/Users/test/myproject"]);
     expect(result.inputs).toHaveLength(1);
     expect(result.inputs[0].metadata?.providerId).toBe(PROVIDER_KINDS.openCode);
   });
 
-  it("returns empty discovery when no projects match", () => {
+  it("returns empty discovery when no projects match", async () => {
     db.prepare("INSERT INTO project VALUES (?, ?, ?, ?)").run(
       "p1",
       "/Users/test/other",
@@ -62,7 +61,7 @@ describe("opencode provider", () => {
     );
 
     const provider = openCode({ _testDb: db });
-    const result = provider.discover(["/Users/test/myproject"]) as DiscoveryResult;
+    const result = await provider.discover(["/Users/test/myproject"]);
     expect(result.inputs).toHaveLength(0);
   });
 
@@ -108,7 +107,7 @@ describe("opencode provider", () => {
 
     const provider = openCode({ _testDb: db });
     provider.connect?.();
-    const discovery = provider.discover(["/test"]) as DiscoveryResult;
+    const discovery = await provider.discover(["/test"]);
     const readResult = await provider.read(discovery.inputs, now);
 
     expect(readResult.health.connected).toBe(true);
@@ -163,7 +162,7 @@ describe("opencode provider", () => {
 
     const provider = openCode({ _testDb: db });
     provider.connect?.();
-    const discovery = provider.discover(["/test"]) as DiscoveryResult;
+    const discovery = await provider.discover(["/test"]);
     const readResult = await provider.read(discovery.inputs, now);
     const snapshot = await provider.normalize(readResult, now);
 
@@ -221,7 +220,7 @@ describe("opencode provider", () => {
 
     const provider = openCode({ _testDb: db });
     provider.connect?.();
-    const discovery = provider.discover(["/test"]) as DiscoveryResult;
+    const discovery = await provider.discover(["/test"]);
     const readResult = await provider.read(discovery.inputs, now);
     const snapshot = await provider.normalize(readResult, now);
 

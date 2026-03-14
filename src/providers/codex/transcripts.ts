@@ -345,8 +345,11 @@ function extractUserText(content: string | Array<Record<string, unknown>>): stri
     return content;
   }
   const joined = content
-    .filter((entry) => entry.type === "input_text" && typeof entry.text === "string")
-    .map((entry) => entry.text as string)
+    .filter(
+      (entry): entry is Record<string, unknown> & { text: string } =>
+        entry.type === "input_text" && typeof entry.text === "string",
+    )
+    .map((entry) => entry.text)
     .join(" ");
   return joined.length > 0 ? joined : undefined;
 }

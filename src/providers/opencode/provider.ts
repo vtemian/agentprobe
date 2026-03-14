@@ -130,7 +130,9 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
     }
 
     const raw = inputs[0].metadata?.projectIds;
-    const projectIds = Array.isArray(raw) ? (raw as string[]) : [];
+    const projectIds = Array.isArray(raw)
+      ? raw.filter((v): v is string => typeof v === "string")
+      : [];
     const updatedAfter = now - sessionWindowMs;
     const sessions = ocDb.findSessions(projectIds, updatedAfter);
 

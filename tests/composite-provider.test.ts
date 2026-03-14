@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCompositeProvider } from "@/core/composite";
-import type { CanonicalAgentSnapshot } from "@/core/model";
 import type { TranscriptProvider } from "@/core/providers";
+import { isAgentPayload } from "@/providers/shared/providers";
 
 describe("composite provider", () => {
   function mockProvider(id: string, agents: { id: string; status: string }[]): TranscriptProvider {
@@ -38,11 +38,10 @@ describe("composite provider", () => {
         health: { connected: true, sourceLabel: id, warnings: [] },
       }),
       normalize: (readResult) => {
-        const payload = readResult.records[0]?.payload as
-          | { agents: CanonicalAgentSnapshot[]; connected: boolean }
-          | undefined;
+        const payload = readResult.records[0]?.payload;
+        const agents = isAgentPayload(payload) ? payload.agents : [];
         return {
-          agents: payload?.agents ?? [],
+          agents,
           health: readResult.health,
         };
       },

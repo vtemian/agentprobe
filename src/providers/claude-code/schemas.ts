@@ -88,12 +88,18 @@ const skippableTypeSchema = z.object({
   type: z.enum(["file-history-snapshot", "queue-operation"]),
 });
 
-const recordSchemaByType: Record<string, z.ZodType<ClaudeCodeSessionRecord>> = {
-  user: userRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
-  assistant: assistantRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
-  progress: progressRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
-  system: systemRecordSchema as z.ZodType<ClaudeCodeSessionRecord>,
-};
+const recordSchemaByType = {
+  user: userRecordSchema,
+  assistant: assistantRecordSchema,
+  progress: progressRecordSchema,
+  system: systemRecordSchema,
+} satisfies Record<string, z.ZodType<ClaudeCodeSessionRecord>>;
+
+type SessionRecordType = keyof typeof recordSchemaByType;
+
+function isSessionRecordType(type: string): type is SessionRecordType {
+  return Object.hasOwn(recordSchemaByType, type);
+}
 
 export function parseSessionRecord(value: unknown): ClaudeCodeSessionRecord | null {
   if (typeof value !== "object" || value === null || !("type" in value)) {
@@ -105,7 +111,7 @@ export function parseSessionRecord(value: unknown): ClaudeCodeSessionRecord | nu
   }
 
   const type = value.type;
-  if (typeof type !== "string" || !Object.hasOwn(recordSchemaByType, type)) {
+  if (typeof type !== "string" || !isSessionRecordType(type)) {
     return null;
   }
   const schema = recordSchemaByType[type];

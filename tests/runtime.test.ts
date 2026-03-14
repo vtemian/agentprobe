@@ -160,7 +160,9 @@ describe("createWatchRuntime", () => {
 
     const refreshError = await runtime.refreshNow().catch((e: unknown) => e);
     expect(refreshError).toBeInstanceOf(Error);
-    expect((refreshError as Error).message).toBe("read failed");
+    if (refreshError instanceof Error) {
+      expect(refreshError.message).toBe("read failed");
+    }
 
     const errorEvents = events.filter((e) => e.type === WATCH_RUNTIME_EVENT_TYPES.error);
     expect(errorEvents.length).toBeGreaterThanOrEqual(1);

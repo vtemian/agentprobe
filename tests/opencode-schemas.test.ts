@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  type MessageData,
-  parseMessageData,
-  parsePartData,
-  parseSessionRow,
-} from "@/providers/opencode/schemas";
+import { parseMessageData, parsePartData, parseSessionRow } from "@/providers/opencode/schemas";
 
 describe("opencode schemas", () => {
   describe("parseSessionRow", () => {
@@ -67,8 +62,9 @@ describe("opencode schemas", () => {
       expect(result).not.toBeNull();
       expect(result?.role).toBe("user");
       expect(result?.agent).toBe("commander");
-      const userResult = result as MessageData & { role: "user" };
-      expect(userResult.summary?.title).toBe("Fix the bug");
+      if (result?.role === "user") {
+        expect(result.summary?.title).toBe("Fix the bug");
+      }
     });
 
     it("parses an assistant message data blob", () => {
@@ -85,9 +81,10 @@ describe("opencode schemas", () => {
       const result = parseMessageData(data);
       expect(result).not.toBeNull();
       expect(result?.role).toBe("assistant");
-      const assistantResult = result as MessageData & { role: "assistant" };
-      expect(assistantResult.tokens?.input).toBe(100);
-      expect(assistantResult.cost).toBe(0.05);
+      if (result?.role === "assistant") {
+        expect(result.tokens?.input).toBe(100);
+        expect(result.cost).toBe(0.05);
+      }
     });
 
     it("returns null for invalid data", () => {

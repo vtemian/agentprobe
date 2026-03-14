@@ -87,7 +87,7 @@ describe("codex provider", () => {
     const provider = codex({ codexHomePath: codexHome, watch: false });
     provider.connect?.();
 
-    const discovery = provider.discover([workspacePath]);
+    const discovery = await provider.discover([workspacePath]);
     expect(discovery).toEqual(
       expect.objectContaining({
         inputs: expect.arrayContaining([
@@ -97,10 +97,7 @@ describe("codex provider", () => {
       }),
     );
 
-    const readResult = await provider.read(
-      (discovery as { inputs: import("@/core/providers").DiscoveryInput[] }).inputs,
-      Date.now(),
-    );
+    const readResult = await provider.read(discovery.inputs, Date.now());
     expect(readResult.health.connected).toBe(true);
 
     const normalized = await provider.normalize(readResult, Date.now());
@@ -123,13 +120,13 @@ describe("codex provider", () => {
     );
   });
 
-  it("returns empty inputs for non-matching workspace", () => {
+  it("returns empty inputs for non-matching workspace", async () => {
     const { codexHome, sessionsDir } = setupCodexHome("nomatch");
     writeSessionFile(sessionsDir, "sess-codex-002.jsonl", "/some/other/project");
 
     const provider = codex({ codexHomePath: codexHome, watch: false });
-    const discovery = provider.discover(["/nonexistent/workspace"]);
-    expect((discovery as { inputs: unknown[] }).inputs).toHaveLength(0);
+    const discovery = await provider.discover(["/nonexistent/workspace"]);
+    expect(discovery.inputs).toHaveLength(0);
   });
 
   it("returns cached discovery on second call with same workspace and files", () => {
@@ -144,20 +141,18 @@ describe("codex provider", () => {
     expect(second).toBe(first);
   });
 
-  it("disconnect clears caches so next discover returns fresh result", () => {
+  it("disconnect clears caches so next discover returns fresh result", async () => {
     const workspacePath = "/tmp/test-codex-disconnect";
     const { codexHome, sessionsDir } = setupCodexHome("disconnect");
     writeSessionFile(sessionsDir, "sess-codex-004.jsonl", workspacePath);
 
     const provider = codex({ codexHomePath: codexHome, watch: false });
 
-    const first = provider.discover([workspacePath]);
+    const first = await provider.discover([workspacePath]);
     provider.disconnect?.();
-    const afterDisconnect = provider.discover([workspacePath]);
+    const afterDisconnect = await provider.discover([workspacePath]);
     expect(afterDisconnect).not.toBe(first);
-    expect((afterDisconnect as { inputs: unknown[] }).inputs).toHaveLength(
-      (first as { inputs: unknown[] }).inputs.length,
-    );
+    expect(afterDisconnect.inputs).toHaveLength(first.inputs.length);
   });
 
   it("has correct provider id", () => {
