@@ -169,6 +169,7 @@ describe("opencode database", () => {
         role: "assistant",
         time: { created: 2 },
         agent: "commander",
+        modelID: "claude-opus-4-6",
       });
       seedPart(rawDb, "pt1", "m2", "s1", { type: "tool", tool: "read" });
       seedPart(rawDb, "pt2", "m2", "s1", { type: "tool", tool: "write" });
@@ -178,6 +179,8 @@ describe("opencode database", () => {
       expect(stats.get("s1")).toBeDefined();
       expect(stats.get("s1")?.messageCount).toBe(2);
       expect(stats.get("s1")?.toolCallCount).toBe(2);
+      expect(stats.get("s1")?.latestAgent).toBe("commander");
+      expect(stats.get("s1")?.latestModel).toBe("claude-opus-4-6");
     });
   });
 

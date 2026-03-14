@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseMessageData, parsePartData, parseSessionRow } from "@/providers/opencode/schemas";
+import {
+  type MessageData,
+  parseMessageData,
+  parsePartData,
+  parseSessionRow,
+} from "@/providers/opencode/schemas";
 
 describe("opencode schemas", () => {
   describe("parseSessionRow", () => {
@@ -17,9 +22,11 @@ describe("opencode schemas", () => {
       const result = parseSessionRow(row);
       expect(result).not.toBeNull();
       expect(result?.id).toBe("ses_abc123");
+      expect(result?.projectId).toBe("proj_123");
       expect(result?.parentId).toBeNull();
       expect(result?.directory).toBe("/Users/test/project");
       expect(result?.title).toBe("Working on feature");
+      expect(result?.version).toBe("1.2.24");
       expect(result?.timeCreated).toBe(1773334158609);
       expect(result?.timeUpdated).toBe(1773334839058);
     });
@@ -60,7 +67,7 @@ describe("opencode schemas", () => {
       expect(result).not.toBeNull();
       expect(result?.role).toBe("user");
       expect(result?.agent).toBe("commander");
-      const userResult = result as { summary?: { title?: string } };
+      const userResult = result as MessageData & { role: "user" };
       expect(userResult.summary?.title).toBe("Fix the bug");
     });
 
@@ -78,7 +85,7 @@ describe("opencode schemas", () => {
       const result = parseMessageData(data);
       expect(result).not.toBeNull();
       expect(result?.role).toBe("assistant");
-      const assistantResult = result as { tokens?: { input?: number }; cost?: number };
+      const assistantResult = result as MessageData & { role: "assistant" };
       expect(assistantResult.tokens?.input).toBe(100);
       expect(assistantResult.cost).toBe(0.05);
     });
@@ -116,6 +123,10 @@ describe("opencode schemas", () => {
     it("parses step-start and step-finish parts", () => {
       expect(parsePartData({ type: "step-start" })).not.toBeNull();
       expect(parsePartData({ type: "step-finish" })).not.toBeNull();
+    });
+
+    it("returns null for unknown part type", () => {
+      expect(parsePartData({ type: "totally-unknown" })).toBeNull();
     });
 
     it("returns null for invalid data", () => {

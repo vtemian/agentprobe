@@ -2,6 +2,10 @@ import type database from "better-sqlite3";
 import { normalizeWorkspacePath } from "@/providers/shared/discovery";
 import { parseSessionRow, type SessionRow } from "./schemas";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export interface SessionStats {
   messageCount: number;
   toolCallCount: number;
@@ -59,60 +63,69 @@ export function createOpenCodeDatabase(db: database.Database): OpenCodeDatabase 
     return rows.map(parseSessionRow).filter((row): row is SessionRow => row !== null);
   }
 
-  function getSessionStats(sessionIds: string[]): Map<string, SessionStats> {
-    const result = new Map<string, SessionStats>();
-    if (sessionIds.length === 0) {
-      return result;
-    }
-
+  function queryGroupedCounts(
+    table: string,
+    whereClause: string,
+    sessionIds: string[],
+  ): Map<string, number> {
     const placeholders = sessionIds.map(() => "?").join(", ");
-
-    const messageCounts = db
+    const rows = db
       .prepare(
         `SELECT session_id as sessionId, COUNT(*) as cnt
-         FROM message WHERE session_id IN (${placeholders})
+         FROM ${table} WHERE session_id IN (${placeholders}) ${whereClause}
          GROUP BY session_id`,
       )
       .all(...sessionIds) as Array<{ sessionId: string; cnt: number }>;
+    return new Map(rows.map((r) => [r.sessionId, r.cnt]));
+  }
 
-    const toolCounts = db
+  function queryLatestAssistants(
+    sessionIds: string[],
+  ): Map<string, { agent: string | null; model: string | null }> {
+    const placeholders = sessionIds.map(() => "?").join(", ");
+    const rows = db
       .prepare(
-        `SELECT p.session_id as sessionId, COUNT(*) as cnt
-         FROM part p
-         WHERE p.session_id IN (${placeholders})
-           AND json_extract(p.data, '$.type') = 'tool'
-         GROUP BY p.session_id`,
-      )
-      .all(...sessionIds) as Array<{ sessionId: string; cnt: number }>;
-
-    const latestAssistants = db
-      .prepare(
-        `SELECT session_id as sessionId,
-                json_extract(data, '$.agent') as agent,
-                json_extract(data, '$.modelID') as model
-         FROM message
-         WHERE session_id IN (${placeholders})
-           AND json_extract(data, '$.role') = 'assistant'
-         ORDER BY time_created DESC`,
+        `SELECT sessionId, agent, model FROM (
+           SELECT session_id as sessionId,
+                  json_extract(data, '$.agent') as agent,
+                  json_extract(data, '$.modelID') as model,
+                  ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY time_created DESC) as rn
+           FROM message
+           WHERE session_id IN (${placeholders})
+             AND json_extract(data, '$.role') = 'assistant'
+         ) WHERE rn = 1`,
       )
       .all(...sessionIds) as Array<{
       sessionId: string;
       agent: string | null;
       model: string | null;
     }>;
+    return new Map(rows.map((r) => [r.sessionId, { agent: r.agent, model: r.model }]));
+  }
 
+  function getSessionStats(sessionIds: string[]): Map<string, SessionStats> {
+    if (sessionIds.length === 0) {
+      return new Map();
+    }
+
+    const messageCounts = queryGroupedCounts("message", "", sessionIds);
+    const toolCounts = queryGroupedCounts(
+      "part",
+      "AND json_extract(data, '$.type') = 'tool'",
+      sessionIds,
+    );
+    const assistants = queryLatestAssistants(sessionIds);
+
+    const result = new Map<string, SessionStats>();
     for (const id of sessionIds) {
-      const msgRow = messageCounts.find((r) => r.sessionId === id);
-      const toolRow = toolCounts.find((r) => r.sessionId === id);
-      const assistantRow = latestAssistants.find((r) => r.sessionId === id);
+      const assistantRow = assistants.get(id);
       result.set(id, {
-        messageCount: msgRow?.cnt ?? 0,
-        toolCallCount: toolRow?.cnt ?? 0,
+        messageCount: messageCounts.get(id) ?? 0,
+        toolCallCount: toolCounts.get(id) ?? 0,
         latestAgent: assistantRow?.agent ?? undefined,
         latestModel: assistantRow?.model ?? undefined,
       });
     }
-
     return result;
   }
 
@@ -130,9 +143,15 @@ export function createOpenCodeDatabase(db: database.Database): OpenCodeDatabase 
     }
 
     try {
-      const data = JSON.parse(row.data) as Record<string, unknown>;
-      const summary = data.summary as Record<string, unknown> | undefined;
-      return typeof summary?.title === "string" ? summary.title : undefined;
+      const parsed: unknown = JSON.parse(row.data);
+      if (!isRecord(parsed)) {
+        return undefined;
+      }
+      const summary = parsed.summary;
+      if (!isRecord(summary)) {
+        return undefined;
+      }
+      return typeof summary.title === "string" ? summary.title : undefined;
     } catch {
       return undefined;
     }

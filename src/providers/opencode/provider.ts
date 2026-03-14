@@ -22,7 +22,7 @@ import {
   OPENCODE_SESSION_WINDOW_MS,
   OPENCODE_SOURCE_KIND,
 } from "./constants";
-import { createOpenCodeDatabase, type OpenCodeDatabase } from "./database";
+import { createOpenCodeDatabase, type OpenCodeDatabase, type SessionStats } from "./database";
 import type { SessionRow } from "./schemas";
 import { createOpenCodeWatch } from "./watch";
 
@@ -40,7 +40,6 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
   const sessionWindowMs = options.sessionWindowMs ?? OPENCODE_SESSION_WINDOW_MS;
   let db: betterSqlite3.Database | undefined = options._testDb;
   let ocDb: OpenCodeDatabase | undefined = db ? createOpenCodeDatabase(db) : undefined;
-  let _connected = false;
   let cachedProjectIds: string[] | undefined;
   let cachedWorkspaceKey: string | undefined;
 
@@ -82,12 +81,10 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
         });
 
   function connect(): void {
-    _connected = true;
     openDb();
   }
 
   function disconnect(): void {
-    _connected = false;
     closeDb();
     cachedProjectIds = undefined;
     cachedWorkspaceKey = undefined;
@@ -132,7 +129,8 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
       };
     }
 
-    const projectIds = (inputs[0].metadata?.projectIds as string[]) ?? [];
+    const raw = inputs[0].metadata?.projectIds;
+    const projectIds = Array.isArray(raw) ? (raw as string[]) : [];
     const updatedAfter = now - sessionWindowMs;
     const sessions = ocDb.findSessions(projectIds, updatedAfter);
 
@@ -184,7 +182,7 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
 
 function buildAgentSnapshots(
   sessions: SessionRow[],
-  stats: Map<string, import("./database").SessionStats>,
+  stats: Map<string, SessionStats>,
   ocDb: OpenCodeDatabase,
   now: number,
 ): CanonicalAgentSnapshot[] {
