@@ -124,10 +124,6 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
     return { inputs, watchPaths: [dbPath], warnings: [] };
   }
 
-  function getWatchPaths(): string[] {
-    return [options.dbPath ?? OPENCODE_DB_PATH_DEFAULT];
-  }
-
   async function read(
     inputs: DiscoveryInput[],
     now: number = Date.now(),
@@ -186,7 +182,6 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
     read,
     normalize,
     watch,
-    getWatchPaths,
   };
 }
 

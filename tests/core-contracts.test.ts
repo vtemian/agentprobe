@@ -14,6 +14,6 @@ describe("core provider contracts", () => {
     expect(core.PROVIDER_KINDS.cursor).toBe("cursor");
     expect(core.PROVIDER_KINDS.codex).toBe("codex");
     expect(core.PROVIDER_KINDS.claudeCode).toBe("claude-code");
-    expect(core.PROVIDER_KINDS.opencode).toBe("opencode");
+    expect(core.PROVIDER_KINDS.openCode).toBe("opencode");
   });
 });

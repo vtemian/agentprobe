@@ -47,6 +47,12 @@
       "import": "./dist/providers/codex/index.js",
       "require": "./dist/providers/codex/index.cjs",
       "default": "./dist/providers/codex/index.js"
+    },
+    "./providers/opencode": {
+      "types": "./dist/providers/opencode/index.d.ts",
+      "import": "./dist/providers/opencode/index.js",
+      "require": "./dist/providers/opencode/index.cjs",
+      "default": "./dist/providers/opencode/index.js"
     }
   },
   "typesVersions": {
@@ -62,6 +68,9 @@
       ],
       "providers/codex": [
         "dist/providers/codex/index.d.ts"
+      ],
+      "providers/opencode": [
+        "dist/providers/opencode/index.d.ts"
       ]
     }
   },
