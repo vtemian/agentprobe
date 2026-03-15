@@ -27,7 +27,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-const FIRST_LINE_BUFFER_SIZE = 4096;
+// Codex v0.114+ embeds the full system prompt in session_meta,
+// producing first lines up to ~16KB.
+const FIRST_LINE_BUFFER_SIZE = 65_536;
 
 function readFirstLine(filePath: string): string | undefined {
   let fd: number;
