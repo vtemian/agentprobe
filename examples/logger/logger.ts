@@ -50,25 +50,15 @@ observer.subscribe((event) => {
   console.log(`[${record.timestamp}] ${record.kind} | ${label} (${agent.status}) | ${summary}`);
 });
 
-try {
-  await observer.start();
-} catch (err) {
-  console.error("Failed to start observer:", err);
-  process.exit(1);
-}
+await observer.start();
 console.log(`Logging to ${outputFile}, watching ${workspacePaths.join(", ")}... (Ctrl+C to stop)`);
 
-let shuttingDown = false;
-process.on("SIGINT", () => {
-  if (shuttingDown) return;
-  shuttingDown = true;
+process.on("SIGINT", async () => {
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("\n--- Summary ---");
   console.log(
     `Total events: ${eventCount} | Agents seen: ${agentsSeen.size} | Duration: ${elapsed}s`,
   );
-  observer
-    .stop()
-    .catch(() => {})
-    .finally(() => process.exit(0));
+  await observer.stop();
+  process.exit(0);
 });

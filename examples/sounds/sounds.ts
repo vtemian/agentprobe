@@ -38,20 +38,10 @@ observer.subscribe((event) => {
   if (sound) play(sound);
 });
 
-try {
-  await observer.start();
-} catch (err) {
-  console.error("Failed to start observer:", err);
-  process.exit(1);
-}
+await observer.start();
 console.log(`[${isoNow()}] Watching ${workspacePaths.join(", ")}... (Ctrl+C to stop)`);
 
-let shuttingDown = false;
-process.on("SIGINT", () => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  observer
-    .stop()
-    .catch(() => {})
-    .finally(() => process.exit(0));
+process.on("SIGINT", async () => {
+  await observer.stop();
+  process.exit(0);
 });
