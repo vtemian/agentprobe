@@ -41,7 +41,7 @@ observer.subscribe((event) => {
 
 await observer.start();
 
-// later — stop() clears all subscriptions and resets state
+// stop() clears all subscriptions and resets state
 await observer.stop();
 ```
 
@@ -78,11 +78,11 @@ stateDiagram-v2
 
 Inside the `started` state, all work flows through a sequential event bus with three event types:
 
-- **`file-changed`** — dispatched after debounced fs.watch events; reads the snapshot and schedules a check-idle timer
-- **`check-idle`** — fires on a timer (default 2s); re-reads the snapshot to catch time-based status transitions (e.g. `running` → `idle` → `completed`) and self-reschedules while agents exist
-- **`refresh-requested`** — dispatched by `refreshNow()`; reads the snapshot and resolves waiting callers
+- **`file-changed`**: dispatched after debounced fs.watch events; reads the snapshot and schedules a check-idle timer
+- **`check-idle`**: fires on a timer (default 2s); re-reads the snapshot to catch time-based status transitions (e.g. `running` → `idle` → `completed`) and self-reschedules while agents exist
+- **`refresh-requested`**: dispatched by `refreshNow()`; reads the snapshot and resolves waiting callers
 
-Events are processed one at a time (no overlapping reads). Subscribers only receive events when agent statuses actually change (joined, statusChanged, left). Heartbeat-only cycles are silent — the internal polling is invisible to consumers.
+Events are processed one at a time (no overlapping reads). Subscribers only receive events when agent statuses actually change (joined, statusChanged, left). Heartbeat-only cycles are silent, and the internal polling is invisible to consumers.
 
 ### Idle checking
 
@@ -104,7 +104,7 @@ Agent statuses depend on time elapsed since last activity. Without periodic re-e
 - A monotonic lifecycle token guards all event dispatch
 - Every start/stop cycle advances the token
 - Events dispatched with a stale token are silently dropped
-- The event bus processes handlers sequentially — no overlapping async work
+- The event bus processes handlers sequentially with no overlapping async work
 
 ### Error and stop semantics
 
@@ -123,12 +123,12 @@ When a provider exposes `subscribeToChanges`, runtime subscriptions:
 
 ## Public Entry Points
 
-- `@agentprobe/core` — full package with all providers, `createObserver` enables all by default
-- `@agentprobe/core/core` — core runtime, lifecycle, model, and provider types only
-- `@agentprobe/core/providers/cursor` — Cursor transcript provider
-- `@agentprobe/core/providers/claude-code` — Claude Code session provider
-- `@agentprobe/core/providers/codex` — Codex session provider
-- `@agentprobe/core/providers/opencode` — OpenCode database provider
+- `@agentprobe/core`: full package with all providers, `createObserver` enables all by default
+- `@agentprobe/core/core`: core runtime, lifecycle, model, and provider types only
+- `@agentprobe/core/providers/cursor`: Cursor transcript provider
+- `@agentprobe/core/providers/claude-code`: Claude Code session provider
+- `@agentprobe/core/providers/codex`: Codex session provider
+- `@agentprobe/core/providers/opencode`: OpenCode database provider
 
 ## Development
 
@@ -149,7 +149,7 @@ npm run build
 
 ## Examples
 
-See the [`examples/`](examples/) directory for 9 self-contained demos — from a minimal observer to a full terminal dashboard and floating macOS overlay.
+See the [`examples/`](examples/) directory for 9 self-contained demos, from a minimal observer to a full terminal dashboard and floating macOS overlay.
 
 ---
 

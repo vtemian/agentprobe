@@ -33,11 +33,11 @@ Watches the given workspace for coding agent activity (Cursor, Claude Code, Code
 
 Each JSONL record contains:
 
-- `timestamp` — ISO 8601 timestamp of the event
-- `kind` — the event type (e.g. status change, discovery)
-- `agentId` / `source` — which agent produced the event
-- `status`, `fromStatus`, `toStatus` — current and transitioning states
-- `taskSummary` — the agent's current task description
+- `timestamp`: ISO 8601 timestamp of the event
+- `kind`: the event type (e.g. status change, discovery)
+- `agentId` / `source`: which agent produced the event
+- `status`, `fromStatus`, `toStatus`: current and transitioning states
+- `taskSummary`: the agent's current task description
 
 While running, every event is also printed to stdout as a single-line summary with timestamp, event kind, source label, and a truncated task summary.
 

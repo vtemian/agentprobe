@@ -17,7 +17,7 @@ If no workspace path is provided, it defaults to the current working directory.
 
 ## What it does
 
-Watches all detected coding agents (Cursor, Claude Code, Codex, OpenCode) in the given workspace and logs every lifecycle event — joined, status changes, and left — with the agent ID, status, and task summary.
+Watches all detected coding agents (Cursor, Claude Code, Codex, OpenCode) in the given workspace and logs every lifecycle event (joined, status changes, and left) with the agent ID, status, and task summary.
 
 ## Demo
 

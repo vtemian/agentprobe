@@ -18,7 +18,7 @@ Then pick an example and follow its README.
 
 | Example | Description |
 |---------|-------------|
-| [simple](simple/) | Minimal observer — prints every lifecycle event to stdout |
+| [simple](simple/) | Minimal observer that prints every lifecycle event to stdout |
 | [status-tracker](status-tracker/) | Tracks active agents and prints live status counts |
 | [notify](notify/) | macOS desktop notifications on agent completion or error |
 | [sounds](sounds/) | macOS system sounds on agent lifecycle events |
