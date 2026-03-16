@@ -7,8 +7,6 @@ import { type GlimpseWindow, open } from "glimpseui";
 
 const WIDTH = 300;
 const HEADER_HEIGHT = 40;
-const AGENT_ROW_HEIGHT = 52;
-const EMPTY_HEIGHT = 80;
 const MAX_HEIGHT = 500;
 const TICK_MS = 1000;
 const FADE_MS = 200;
@@ -21,6 +19,13 @@ const SOURCE_LABELS: Record<string, string> = {
   opencode: "OpenCode",
 };
 
+const SOURCE_COLORS: Record<string, string> = {
+  "cursor-transcripts": "#a78bfa",
+  "claude-code-sessions": "#fb923c",
+  codex: "#22d3ee",
+  opencode: "#60a5fa",
+};
+
 const clickThrough = process.argv.includes("--click-through");
 const paths = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const workspaces = paths.length > 0 ? paths : [process.cwd()];
@@ -30,7 +35,7 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
-    --bg: rgba(24, 24, 27, 0.82);
+    --bg: rgb(24, 24, 27);
     --border: rgba(255, 255, 255, 0.07);
     --border-faint: rgba(255, 255, 255, 0.03);
     --text: #e4e4e7;
@@ -42,17 +47,19 @@ const html = `<!DOCTYPE html>
     --idle: #facc15;
     --completed: #9ca3af;
     --error: #f87171;
+    --cursor: #a78bfa;
+    --claude: #fb923c;
+    --codex: #22d3ee;
+    --opencode: #60a5fa;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font: 11px/1.4 "SF Mono", Menlo, Monaco, monospace;
+    font: 13px/1.4 "SF Mono", Menlo, Monaco, monospace;
     color: var(--text);
     background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
     -webkit-user-select: none;
     user-select: none;
+    overflow: hidden;
   }
   header {
     display: flex;
@@ -63,14 +70,15 @@ const html = `<!DOCTYPE html>
   }
   .title { font-weight: 600; color: var(--bright); }
   .badge {
-    font-size: 10px; color: var(--dim);
+    font-size: 11px; color: var(--dim);
     background: rgba(255,255,255,0.05);
     padding: 1px 6px; border-radius: 8px;
   }
-  #agents { overflow-y: auto; max-height: calc(100vh - 36px); }
+  #agents { overflow-y: auto; max-height: ${MAX_HEIGHT - HEADER_HEIGHT}px; }
   .agent {
-    padding: 6px 10px;
+    padding: 7px 10px 7px 12px;
     border-bottom: 1px solid var(--border-faint);
+    border-left: 3px solid transparent;
   }
   .agent.entering { animation: fadeIn ${FADE_MS}ms ease-out; }
   .agent.leaving  { animation: fadeOut ${FADE_MS}ms ease-in forwards; }
@@ -80,17 +88,39 @@ const html = `<!DOCTYPE html>
     justify-content: space-between;
     align-items: center;
   }
-  .source { display: flex; align-items: center; gap: 5px; font-weight: 500; }
-  .meta { font-size: 9px; color: var(--dim); }
+  .source { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+  .provider {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.06);
+  }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px 1px 4px;
+    border-radius: 8px;
+  }
+  .status-pill.running  { color: var(--running); background: rgba(74,222,128,0.1); }
+  .status-pill.idle     { color: var(--idle); background: rgba(250,204,21,0.1); }
+  .status-pill.completed { color: var(--completed); background: rgba(156,163,175,0.1); }
+  .status-pill.error    { color: var(--error); background: rgba(248,113,113,0.1); }
   .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .dot.running  { background: var(--running); animation: pulse 2s ease-in-out infinite; }
-  .dot.idle     { background: var(--idle); }
+  .dot.running  { background: var(--running); box-shadow: 0 0 6px var(--running); animation: pulse 2s ease-in-out infinite; }
+  .dot.idle     { background: var(--idle); box-shadow: 0 0 4px rgba(250,204,21,0.4); }
   .dot.completed { background: var(--completed); }
-  .dot.error    { background: var(--error); }
+  .dot.error    { background: var(--error); box-shadow: 0 0 6px var(--error); }
+  .meta { font-size: 11px; color: var(--dim); }
   .task {
-    font-size: 10px; color: var(--muted);
+    font-size: 12px; color: var(--muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-top: 2px;
+    margin-top: 3px;
   }
   .empty {
     padding: 20px 10px; text-align: center; color: var(--ghost);
@@ -124,11 +154,31 @@ const html = `<!DOCTYPE html>
     function safe(s) { return s.replace(/[^a-z0-9-]/gi, ""); }
     function card(a, now, fresh) {
       var cls = "agent" + (a.leaving ? " leaving" : fresh ? " entering" : "");
-      return '<div class="' + cls + '">'
-        + '<div class="row"><span class="source"><span class="dot ' + safe(a.status) + '"></span>' + esc(a.label) + '</span>'
-        + '<span class="meta">' + meta(a, now) + '</span></div>'
-        + '<div class="task">' + esc(a.task) + '</div></div>';
+      var border = a.color ? "border-left-color:" + a.color : "";
+      var provStyle = a.color ? "color:" + a.color : "";
+      return '<div class="' + cls + '" style="' + border + '">'
+        + '<div class="row"><span class="source">'
+        + '<span class="provider" style="' + provStyle + '">' + esc(a.label) + '</span>'
+        + '</span>'
+        + '<span class="status-pill ' + safe(a.status) + '"><span class="dot ' + safe(a.status) + '"></span>' + safe(a.status) + '</span></div>'
+        + '<div class="row"><div class="task">' + esc(a.task) + '</div>'
+        + '<span class="meta">' + meta(a, now) + '</span></div></div>';
     }
+    document.addEventListener("keydown", function(e) {
+      if (!e.metaKey) return;
+      if (e.key === "=" || e.key === "+") {
+        e.preventDefault();
+        var size = parseFloat(getComputedStyle(document.body).fontSize) + 1;
+        document.body.style.fontSize = size + "px";
+      } else if (e.key === "-") {
+        e.preventDefault();
+        var size = Math.max(8, parseFloat(getComputedStyle(document.body).fontSize) - 1);
+        document.body.style.fontSize = size + "px";
+      } else if (e.key === "0") {
+        e.preventDefault();
+        document.body.style.fontSize = "";
+      }
+    });
     function render(agents, now) {
       var active = agents.filter(function(a) { return !a.leaving; }).length;
       document.getElementById("badge").textContent = active;
@@ -147,6 +197,7 @@ interface AgentView {
   readonly id: string;
   readonly status: CanonicalAgentStatus;
   readonly label: string;
+  readonly color: string;
   readonly task: string;
   readonly updatedAt: number;
   readonly startedAt: number | undefined;
@@ -158,6 +209,7 @@ function toView(agent: CanonicalAgentSnapshot): AgentView {
     id: agent.id,
     status: agent.status,
     label: SOURCE_LABELS[agent.source] ?? agent.source,
+    color: SOURCE_COLORS[agent.source] ?? "#a1a1aa",
     task: agent.taskSummary,
     updatedAt: agent.updatedAt,
     startedAt: agent.startedAt,
@@ -170,20 +222,14 @@ function isStale(agent: CanonicalAgentSnapshot): boolean {
   return Date.now() - agent.updatedAt > STALE_MS;
 }
 
-function windowHeight(count: number): number {
-  if (count === 0) return HEADER_HEIGHT + EMPTY_HEIGHT;
-  return Math.min(HEADER_HEIGHT + count * AGENT_ROW_HEIGHT, MAX_HEIGHT);
-}
-
 async function main(): Promise<void> {
   const agents = new Map<string, AgentView>();
   const observer = createObserver({ workspacePaths: workspaces });
 
   const win: GlimpseWindow = open(html, {
     width: WIDTH,
-    height: windowHeight(0),
-    frameless: true,
-    transparent: true,
+    height: MAX_HEIGHT,
+    title: "agentprobe",
     floating: true,
     clickThrough,
   });
@@ -193,12 +239,6 @@ async function main(): Promise<void> {
   const send = (): void => {
     const visible = [...agents.values()];
     win.send(`render(${JSON.stringify(visible)}, ${Date.now()})`);
-
-    try {
-      win.resize(WIDTH, windowHeight(visible.filter((a) => !a.leaving).length));
-    } catch (_e: unknown) {
-      // resize not supported on all versions
-    }
   };
 
   const unsubscribe = observer.subscribe((event) => {
