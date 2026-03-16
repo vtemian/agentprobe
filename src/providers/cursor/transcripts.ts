@@ -185,13 +185,13 @@ async function aggregateSourceFiles(
 ): Promise<AggregateResult> {
   const orderedIds: string[] = [];
   const latestById = new Map<string, CanonicalAgentSnapshot>();
-  const allWarnings: string[] = [];
+  const warnings: string[] = [];
   let hasReadError = false;
   let successfulReads = 0;
 
   for (const sourcePath of sourcePaths) {
     const result = await processSourceFile(sourcePath, now, fileCache);
-    allWarnings.push(...result.warnings);
+    warnings.push(...result.warnings);
     if (result.success) {
       successfulReads += 1;
     } else {
@@ -206,7 +206,7 @@ async function aggregateSourceFiles(
     .map((id) => latestById.get(id))
     .filter((agent): agent is CanonicalAgentSnapshot => agent !== undefined);
 
-  return { agents, warnings: allWarnings, successfulReads, hasReadError };
+  return { agents, warnings, successfulReads, hasReadError };
 }
 
 interface ParseStrategy {

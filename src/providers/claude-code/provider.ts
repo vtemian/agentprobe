@@ -27,9 +27,9 @@ interface ProviderState {
   source: ClaudeCodeTranscriptSource | undefined;
   sourcePathKey: string;
   connected: boolean;
-  cachedDiscovery: DiscoveryResult | undefined;
-  cachedFileList: string[] | undefined;
-  cachedWorkspacePaths: string[] | undefined;
+  discovery: DiscoveryResult | undefined;
+  files: string[] | undefined;
+  workspaces: string[] | undefined;
 }
 
 interface DiscoveryOptions {
@@ -48,9 +48,9 @@ export function claudeCode(options: ClaudeCodeOptions = {}): TranscriptProvider 
     source: undefined,
     sourcePathKey: "",
     connected: false,
-    cachedDiscovery: undefined,
-    cachedFileList: undefined,
-    cachedWorkspacePaths: undefined,
+    discovery: undefined,
+    files: undefined,
+    workspaces: undefined,
   };
 
   return {
@@ -64,9 +64,9 @@ export function claudeCode(options: ClaudeCodeOptions = {}): TranscriptProvider 
     disconnect(): void {
       state.connected = false;
       state.source?.disconnect();
-      state.cachedDiscovery = undefined;
-      state.cachedFileList = undefined;
-      state.cachedWorkspacePaths = undefined;
+      state.discovery = undefined;
+      state.files = undefined;
+      state.workspaces = undefined;
     },
     read: (inputs: DiscoveryInput[], now: number = Date.now()) =>
       performRead(state, sourceLabel, inputs, now),
@@ -86,15 +86,15 @@ function performDiscover(
     claudeHomePath: opts.claudeHomePath,
     maxFiles: opts.maxFiles,
   };
-  const currentFileList = listSessionFileNames(sessionOpts);
+  const files = listSessionFileNames(sessionOpts);
   if (
-    state.cachedDiscovery &&
-    state.cachedFileList &&
-    state.cachedWorkspacePaths &&
-    arraysEqual(currentFileList, state.cachedFileList) &&
-    arraysEqual(workspacePaths, state.cachedWorkspacePaths)
+    state.discovery &&
+    state.files &&
+    state.workspaces &&
+    arraysEqual(files, state.files) &&
+    arraysEqual(workspacePaths, state.workspaces)
   ) {
-    return state.cachedDiscovery;
+    return state.discovery;
   }
 
   const watchPaths = resolveSessionDirectories(sessionOpts);
@@ -104,10 +104,10 @@ function performDiscover(
     kind: "file",
     metadata: { providerId: PROVIDER_KINDS.claudeCode },
   }));
-  state.cachedDiscovery = { inputs, watchPaths, warnings: [] };
-  state.cachedFileList = currentFileList;
-  state.cachedWorkspacePaths = [...workspacePaths];
-  return state.cachedDiscovery;
+  state.discovery = { inputs, watchPaths, warnings: [] };
+  state.files = files;
+  state.workspaces = [...workspacePaths];
+  return state.discovery;
 }
 
 async function performRead(

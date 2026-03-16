@@ -35,25 +35,25 @@ async function discoverAll(
   providers: TranscriptProvider[],
   workspacePaths: string[],
 ): Promise<DiscoveryResult> {
-  const allInputs: DiscoveryInput[] = [];
-  const allWatchPaths: string[] = [];
-  const allWarnings: string[] = [];
+  const inputs: DiscoveryInput[] = [];
+  const watchPaths: string[] = [];
+  const warnings: string[] = [];
 
   for (const provider of providers) {
     try {
       const result = await provider.discover(workspacePaths);
-      allInputs.push(...tagInputsWithProvider(result.inputs, provider.id));
-      allWatchPaths.push(...result.watchPaths);
-      allWarnings.push(...result.warnings);
+      inputs.push(...tagInputsWithProvider(result.inputs, provider.id));
+      watchPaths.push(...result.watchPaths);
+      warnings.push(...result.warnings);
     } catch (error) {
-      allWarnings.push(`[${provider.id}] ${toError(error).message}`);
+      warnings.push(`[${provider.id}] ${toError(error).message}`);
     }
   }
 
   return {
-    inputs: allInputs,
-    watchPaths: [...new Set(allWatchPaths)],
-    warnings: allWarnings.length > 0 ? [...new Set(allWarnings)] : [],
+    inputs: inputs,
+    watchPaths: [...new Set(watchPaths)],
+    warnings: warnings.length > 0 ? [...new Set(warnings)] : [],
   };
 }
 
@@ -94,10 +94,10 @@ async function readAll(
   now: number = Date.now(),
 ): Promise<TranscriptReadResult> {
   const inputsByProvider = extractProviderInputs(inputs);
-  const allRecords: TranscriptReadResult["records"] = [];
-  const allWarnings: string[] = [];
+  const records: TranscriptReadResult["records"] = [];
+  const warnings: string[] = [];
   let anyConnected = false;
-  const sourceLabels: string[] = [];
+  const labels: string[] = [];
 
   for (const provider of providers) {
     const providerInputs = inputsByProvider.get(provider.id) ?? [];
@@ -105,20 +105,20 @@ async function readAll(
       continue;
     }
     const partial = await readFromProvider(provider, providerInputs, now);
-    allRecords.push(...partial.records);
-    allWarnings.push(...partial.warnings);
+    records.push(...partial.records);
+    warnings.push(...partial.warnings);
     anyConnected = anyConnected || partial.connected;
     if (partial.sourceLabel) {
-      sourceLabels.push(partial.sourceLabel);
+      labels.push(partial.sourceLabel);
     }
   }
 
   return {
-    records: allRecords,
+    records: records,
     health: {
       connected: anyConnected,
-      sourceLabel: sourceLabels.join("+"),
-      warnings: allWarnings,
+      sourceLabel: labels.join("+"),
+      warnings: warnings,
     },
   };
 }
@@ -160,8 +160,8 @@ async function normalizeAll(
 ): Promise<CanonicalSnapshot> {
   const recordsByProvider = groupByKey(readResult.records, (record) => record.provider);
 
-  const allAgents: CanonicalAgentSnapshot[] = [];
-  const allWarnings: string[] = [];
+  const agents: CanonicalAgentSnapshot[] = [];
+  const warnings: string[] = [];
   let anyConnected = false;
 
   for (const provider of providers) {
@@ -176,17 +176,17 @@ async function normalizeAll(
     };
 
     const normalized = await provider.normalize(providerReadResult, now);
-    allAgents.push(...normalized.agents);
-    allWarnings.push(...normalized.health.warnings);
+    agents.push(...normalized.agents);
+    warnings.push(...normalized.health.warnings);
     anyConnected = anyConnected || normalized.health.connected;
   }
 
   return {
-    agents: allAgents,
+    agents: agents,
     health: {
       connected: anyConnected,
       sourceLabel: readResult.health.sourceLabel,
-      warnings: allWarnings.length > 0 ? [...new Set(allWarnings)] : [],
+      warnings: warnings.length > 0 ? [...new Set(warnings)] : [],
     },
   };
 }

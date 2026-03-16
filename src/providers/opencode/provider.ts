@@ -37,8 +37,8 @@ export interface OpenCodeOptions {
 interface ProviderState {
   db: betterSqlite3.Database | undefined;
   ocDb: OpenCodeDatabase | undefined;
-  cachedProjectIds: string[] | undefined;
-  cachedWorkspaceKey: string | undefined;
+  projectIds: string[] | undefined;
+  workspaceKey: string | undefined;
 }
 
 export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
@@ -47,8 +47,8 @@ export function openCode(options: OpenCodeOptions = {}): TranscriptProvider {
   const state: ProviderState = {
     db: options._testDb,
     ocDb: options._testDb ? createOpenCodeDatabase(options._testDb) : undefined,
-    cachedProjectIds: undefined,
-    cachedWorkspaceKey: undefined,
+    projectIds: undefined,
+    workspaceKey: undefined,
   };
 
   const watch =
@@ -95,8 +95,8 @@ function disconnectState(state: ProviderState, options: OpenCodeOptions): void {
   }
   state.db = undefined;
   state.ocDb = undefined;
-  state.cachedProjectIds = undefined;
-  state.cachedWorkspaceKey = undefined;
+  state.projectIds = undefined;
+  state.workspaceKey = undefined;
 }
 
 function discoverProjects(
@@ -109,13 +109,13 @@ function discoverProjects(
   }
 
   const workspaceKey = workspacePaths.join("\n");
-  if (state.cachedProjectIds && state.cachedWorkspaceKey === workspaceKey) {
-    return buildDiscoveryResult(state.cachedProjectIds, options);
+  if (state.projectIds && state.workspaceKey === workspaceKey) {
+    return buildDiscoveryResult(state.projectIds, options);
   }
 
-  state.cachedProjectIds = state.ocDb.findProjectIds(workspacePaths);
-  state.cachedWorkspaceKey = workspaceKey;
-  return buildDiscoveryResult(state.cachedProjectIds, options);
+  state.projectIds = state.ocDb.findProjectIds(workspacePaths);
+  state.workspaceKey = workspaceKey;
+  return buildDiscoveryResult(state.projectIds, options);
 }
 
 function buildDiscoveryResult(projectIds: string[], options: OpenCodeOptions): DiscoveryResult {

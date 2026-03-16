@@ -30,9 +30,9 @@ interface CodexState {
   source: CodexTranscriptSource | undefined;
   sourcePathKey: string;
   connected: boolean;
-  cachedDiscovery: DiscoveryResult | undefined;
-  cachedFileList: string[] | undefined;
-  cachedWorkspacePaths: string[] | undefined;
+  discovery: DiscoveryResult | undefined;
+  files: string[] | undefined;
+  workspaces: string[] | undefined;
 }
 
 export function codex(options: CodexOptions = {}): TranscriptProvider {
@@ -44,9 +44,9 @@ export function codex(options: CodexOptions = {}): TranscriptProvider {
     source: undefined,
     sourcePathKey: "",
     connected: false,
-    cachedDiscovery: undefined,
-    cachedFileList: undefined,
-    cachedWorkspacePaths: undefined,
+    discovery: undefined,
+    files: undefined,
+    workspaces: undefined,
   };
 
   return {
@@ -74,15 +74,15 @@ function discoverSessions(
     codexHomePath: opts.codexHomePath,
     maxFiles: opts.maxFiles,
   };
-  const currentFileList = listSessionFileNames(discoveryOptions);
+  const files = listSessionFileNames(discoveryOptions);
   if (
-    state.cachedDiscovery &&
-    state.cachedFileList &&
-    state.cachedWorkspacePaths &&
-    arraysEqual(currentFileList, state.cachedFileList) &&
-    arraysEqual(workspacePaths, state.cachedWorkspacePaths)
+    state.discovery &&
+    state.files &&
+    state.workspaces &&
+    arraysEqual(files, state.files) &&
+    arraysEqual(workspacePaths, state.workspaces)
   ) {
-    return state.cachedDiscovery;
+    return state.discovery;
   }
 
   const sessionsDir = resolveSessionsDirectory(discoveryOptions);
@@ -92,18 +92,18 @@ function discoverSessions(
     kind: "file",
     metadata: { providerId: PROVIDER_KINDS.codex },
   }));
-  state.cachedDiscovery = { inputs, watchPaths: [sessionsDir], warnings: [] };
-  state.cachedFileList = currentFileList;
-  state.cachedWorkspacePaths = [...workspacePaths];
-  return state.cachedDiscovery;
+  state.discovery = { inputs, watchPaths: [sessionsDir], warnings: [] };
+  state.files = files;
+  state.workspaces = [...workspacePaths];
+  return state.discovery;
 }
 
 function disconnectState(state: CodexState): void {
   state.connected = false;
   state.source?.disconnect();
-  state.cachedDiscovery = undefined;
-  state.cachedFileList = undefined;
-  state.cachedWorkspacePaths = undefined;
+  state.discovery = undefined;
+  state.files = undefined;
+  state.workspaces = undefined;
 }
 
 async function readSessions(

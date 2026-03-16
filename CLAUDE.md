@@ -30,6 +30,7 @@
 ## TypeScript
 
 - Names are contracts: domain-meaningful, no `data`/`result`/`temp`
+- Prefer single-word names. Drop redundant prefixes (`allWarnings` → `warnings`, `currentFiles` → `files`, `cachedDiscovery` → `discovery`). Context (scope, parameter position, containing object) should carry the qualifier, not the name
 - No type names in identifiers (no Hungarian notation): avoid suffixes like `Map`, `Array`, `List`, `String`, `Object`, `Set`, `Dict`, `Number`, `Boolean`, `Fn`, `Func`, `Callback`. Name by what it holds in the domain, not its data structure
 - Prefer `interface` for contracts and `type` for unions/aliases
 - Discriminated unions over class hierarchies

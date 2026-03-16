@@ -25,9 +25,9 @@ interface CursorProviderState {
   source: CursorTranscriptSource | undefined;
   sourcePathKey: string;
   connected: boolean;
-  cachedDiscovery: DiscoveryResult | undefined;
-  cachedFileList: string[] | undefined;
-  cachedWorkspacePaths: string[] | undefined;
+  discovery: DiscoveryResult | undefined;
+  files: string[] | undefined;
+  workspaces: string[] | undefined;
 }
 
 export function cursor(options: CursorOptions = {}): TranscriptProvider {
@@ -37,9 +37,9 @@ export function cursor(options: CursorOptions = {}): TranscriptProvider {
     source: undefined,
     sourcePathKey: "",
     connected: false,
-    cachedDiscovery: undefined,
-    cachedFileList: undefined,
-    cachedWorkspacePaths: undefined,
+    discovery: undefined,
+    files: undefined,
+    workspaces: undefined,
   };
 
   return {
@@ -59,15 +59,15 @@ function discoverTranscripts(
   state: CursorProviderState,
   workspacePaths: string[],
 ): DiscoveryResult {
-  const currentFileList = listTranscriptFileNames({ workspacePaths });
+  const files = listTranscriptFileNames({ workspacePaths });
   if (
-    state.cachedDiscovery &&
-    state.cachedFileList &&
-    state.cachedWorkspacePaths &&
-    arraysEqual(currentFileList, state.cachedFileList) &&
-    arraysEqual(workspacePaths, state.cachedWorkspacePaths)
+    state.discovery &&
+    state.files &&
+    state.workspaces &&
+    arraysEqual(files, state.files) &&
+    arraysEqual(workspacePaths, state.workspaces)
   ) {
-    return state.cachedDiscovery;
+    return state.discovery;
   }
 
   const watchPaths = resolveTranscriptDirectories({ workspacePaths });
@@ -77,10 +77,10 @@ function discoverTranscripts(
     kind: "file",
     metadata: { providerId: PROVIDER_KINDS.cursor },
   }));
-  state.cachedDiscovery = { inputs, watchPaths, warnings: [] };
-  state.cachedFileList = currentFileList;
-  state.cachedWorkspacePaths = [...workspacePaths];
-  return state.cachedDiscovery;
+  state.discovery = { inputs, watchPaths, warnings: [] };
+  state.files = files;
+  state.workspaces = [...workspacePaths];
+  return state.discovery;
 }
 
 function connectProvider(state: CursorProviderState): void {
@@ -91,9 +91,9 @@ function connectProvider(state: CursorProviderState): void {
 function disconnectProvider(state: CursorProviderState): void {
   state.connected = false;
   void state.source?.disconnect();
-  state.cachedDiscovery = undefined;
-  state.cachedFileList = undefined;
-  state.cachedWorkspacePaths = undefined;
+  state.discovery = undefined;
+  state.files = undefined;
+  state.workspaces = undefined;
 }
 
 async function readTranscripts(
