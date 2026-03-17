@@ -1,19 +1,12 @@
 # macOS Notifications
 
-Desktop notifications when coding agents complete or error out. Built with [node-notifier](https://github.com/mikaelbr/node-notifier) and `@agentprobe/core`.
+Desktop notifications when coding agents complete or error out. Uses native `osascript` and `@agentprobe/core`, zero dependencies.
 
 ## Prerequisites
 
-- macOS (uses native notification center)
+- macOS (uses native Notification Center via `osascript`)
 - Node.js 20+
 - `@agentprobe/core` built locally (`npm run build` from the repo root)
-
-## Setup
-
-```bash
-cd examples/notify
-npm install
-```
 
 ## Run
 

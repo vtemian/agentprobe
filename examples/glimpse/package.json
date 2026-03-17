@@ -2,6 +2,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "glimpseui": "^0.1.0"
+    "glimpseui": "github:vtemian/glimpse"
   }
 }

@@ -1,6 +1,6 @@
 # Glimpse
 
-A floating, always-on-top overlay that shows active coding agents in real time. Built with [GlimpseUI](https://github.com/nicktrav/glimpseui) and `@agentprobe/core`.
+A floating, always-on-top overlay that shows active coding agents in real time. Built with [GlimpseUI](https://github.com/hazat/glimpse) and `@agentprobe/core`.
 
 ## Prerequisites
 
