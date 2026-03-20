@@ -7,6 +7,7 @@ import {
 import { createCompositeProvider } from "./core/composite";
 import { claudeCode } from "./providers/claude-code";
 import { codex } from "./providers/codex";
+import { cortexCode } from "./providers/cortex-code";
 import { cursor } from "./providers/cursor";
 import { openCode } from "./providers/opencode";
 
@@ -75,6 +76,10 @@ export {
   codex,
 } from "./providers/codex";
 export {
+  type CortexCodeOptions,
+  cortexCode,
+} from "./providers/cortex-code";
+export {
   type CursorOptions,
   cursor,
 } from "./providers/cursor";
@@ -88,7 +93,13 @@ export interface CreateObserverOptions extends Omit<ObserverOptions, "provider">
 }
 
 export function createObserver(options: CreateObserverOptions): Observer {
-  const providers = options.providers ?? [cursor(), claudeCode(), codex(), openCode()];
+  const providers = options.providers ?? [
+    cursor(),
+    claudeCode(),
+    codex(),
+    openCode(),
+    cortexCode(),
+  ];
   const provider = providers.length === 1 ? providers[0] : createCompositeProvider(providers);
 
   return createCoreObserver({
