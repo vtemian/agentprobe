@@ -53,6 +53,12 @@
       "import": "./dist/providers/opencode/index.js",
       "require": "./dist/providers/opencode/index.cjs",
       "default": "./dist/providers/opencode/index.js"
+    },
+    "./providers/cortex-code": {
+      "types": "./dist/providers/cortex-code/index.d.ts",
+      "import": "./dist/providers/cortex-code/index.js",
+      "require": "./dist/providers/cortex-code/index.cjs",
+      "default": "./dist/providers/cortex-code/index.js"
     }
   },
   "typesVersions": {
@@ -71,6 +77,9 @@
       ],
       "providers/opencode": [
         "dist/providers/opencode/index.d.ts"
+      ],
+      "providers/cortex-code": [
+        "dist/providers/cortex-code/index.d.ts"
       ]
     }
   },

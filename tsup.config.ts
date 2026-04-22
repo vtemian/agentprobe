@@ -8,6 +8,7 @@ export default defineConfig({
     "providers/claude-code/index": "src/providers/claude-code/index.ts",
     "providers/codex/index": "src/providers/codex/index.ts",
     "providers/opencode/index": "src/providers/opencode/index.ts",
+    "providers/cortex-code/index": "src/providers/cortex-code/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

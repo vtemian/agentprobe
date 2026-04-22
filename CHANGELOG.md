@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Cortex Code (Snowflake) transcript provider (`cortexCode`)
+- Discovers sessions from `~/.snowflake/cortex/conversations/*.json`
+- Filters by `working_directory` to scope to workspace
+- Extracts connection name, message count, tool call count, and session type as metadata
+- Status detection based on `last_updated` recency and active tool calls
+- Header caching by mtime to avoid re-reading unchanged files
+- Watch support via shared `createProviderWatch`
+- Public entry point: `@agentprobe/core/providers/cortex-code`
+- 41 new tests across schemas, discovery, transcripts, and provider integration
+
 ## [0.1.2] - 2026-03-06
 
 ### Fixed
